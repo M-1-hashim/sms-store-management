@@ -1,6 +1,18 @@
 // ─── Invoice Print Utility ────────────────────────────────────────────
 // Opens a beautiful RTL invoice in a new window for printing
 
+export interface StoreSettings {
+  storeName: string
+  storeNameEn: string
+  address: string
+  phone: string
+  email: string
+  logo: string | null
+  taxNumber: string
+  invoiceFooter: string
+  currency: string
+}
+
 export interface InvoiceData {
   invoiceNumber: string
   date: string
@@ -20,8 +32,31 @@ export interface InvoiceData {
   notes?: string | null
 }
 
-export function printInvoice(data: InvoiceData) {
+export async function printInvoice(data: InvoiceData) {
   const toFarsi = (n: number) => n.toLocaleString('fa-AF')
+
+  // Fetch store settings
+  let settings: StoreSettings = {
+    storeName: 'فروشگاه من',
+    storeNameEn: 'My Store',
+    address: '',
+    phone: '',
+    email: '',
+    logo: null,
+    taxNumber: '',
+    invoiceFooter: 'با تشکر از خرید شما',
+    currency: 'افغانی',
+  }
+
+  try {
+    const res = await fetch('/api/settings')
+    const json = await res.json()
+    if (json.success && json.data) {
+      settings = json.data
+    }
+  } catch {
+    // Use defaults if settings fetch fails
+  }
   const itemsRows = data.items
     .map(
       (item, i) => `
@@ -294,8 +329,9 @@ export function printInvoice(data: InvoiceData) {
     <!-- Header -->
     <div class="header">
       <div class="brand">
-        <div class="brand-name">سیستم مدریتی فروشگاه</div>
-        <div class="brand-sub">Sales Management System</div>
+        ${settings.logo ? `<img src="${settings.logo}" style="width:56px;height:56px;border-radius:12px;margin-bottom:8px;object-fit:cover;" />` : ''}
+        <div class="brand-name">${settings.storeName}</div>
+        <div class="brand-sub">${settings.storeNameEn}</div>
       </div>
       <div class="invoice-badge">
         <div class="invoice-label">شماره فاکتور</div>
@@ -347,25 +383,25 @@ export function printInvoice(data: InvoiceData) {
       <div class="totals-box">
         <div class="totals-row">
           <span class="totals-label" style="color:#94a3b8;">جمع کل</span>
-          <span style="font-weight:500;">${toFarsi(data.totalAmount)} <small style="font-size:11px;color:#94a3b8;">افغانی</small></span>
+          <span style="font-weight:500;">${toFarsi(data.totalAmount)} <small style="font-size:11px;color:#94a3b8;">${settings.currency}</small></span>
         </div>
         ${data.discount > 0 ? `
         <div class="totals-row discount">
           <span class="totals-label">تخفیف</span>
-          <span>−${toFarsi(data.discount)} <small style="font-size:11px;">افغانی</small></span>
+          <span>−${toFarsi(data.discount)} <small style="font-size:11px;">${settings.currency}</small></span>
         </div>` : ''}
         <div class="totals-row final">
           <span class="totals-label">مبلغ نهایی</span>
-          <span>${toFarsi(data.finalAmount)} <small style="font-size:11px;opacity:0.7;">افغانی</small></span>
+          <span>${toFarsi(data.finalAmount)} <small style="font-size:11px;opacity:0.7;">${settings.currency}</small></span>
         </div>
         <div class="totals-row paid">
           <span class="totals-label" style="color:#059669;">پرداخت شده</span>
-          <span>${toFarsi(data.paidAmount)} <small style="font-size:11px;">افغانی</small></span>
+          <span>${toFarsi(data.paidAmount)} <small style="font-size:11px;">${settings.currency}</small></span>
         </div>
         ${data.change > 0 ? `
         <div class="totals-row">
           <span class="totals-label" style="color:#94a3b8;">پول برگشتی</span>
-          <span style="color:#64748b;">${toFarsi(data.change)} <small style="font-size:11px;">افغانی</small></span>
+          <span style="color:#64748b;">${toFarsi(data.change)} <small style="font-size:11px;">${settings.currency}</small></span>
         </div>` : ''}
       </div>
     </div>
@@ -376,10 +412,18 @@ export function printInvoice(data: InvoiceData) {
       <div>${data.notes}</div>
     </div>` : ''}
 
+    ${settings.phone || settings.email || settings.address ? `
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px;padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;">
+      ${settings.phone ? `<span>📞 ${settings.phone}</span>` : ''}
+      ${settings.email ? `<span>✉️ ${settings.email}</span>` : ''}
+      ${settings.address ? `<span>📍 ${settings.address}</span>` : ''}
+      ${settings.taxNumber ? `<span>🔢 ${settings.taxNumber}</span>` : ''}
+    </div>` : ''}
+
     <!-- Footer -->
     <div class="footer">
       <div class="footer-right">
-        <div class="footer-text">با تشکر از خرید شما</div>
+        <div class="footer-text">${settings.invoiceFooter || 'با تشکر از خرید شما'}</div>
         <div class="footer-text">این فاکتور به صورت خودکار تولید شده است</div>
       </div>
       <div class="footer-left">

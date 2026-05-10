@@ -11,6 +11,7 @@ export type Page =
   | 'suppliers' 
   | 'expenses' 
   | 'reports'
+  | 'settings'
 
 interface AppState {
   currentPage: Page

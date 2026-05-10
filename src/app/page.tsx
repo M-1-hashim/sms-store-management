@@ -22,6 +22,7 @@ const Customers = dynamic(() => import('@/components/pages/customers'), { ssr: f
 const Suppliers = dynamic(() => import('@/components/pages/suppliers'), { ssr: false })
 const Expenses = dynamic(() => import('@/components/pages/expenses'), { ssr: false })
 const Reports = dynamic(() => import('@/components/pages/reports'), { ssr: false })
+const Settings = dynamic(() => import('@/components/pages/settings'), { ssr: false })
 
 function PageContent() {
   const { currentPage } = useAppStore()
@@ -37,6 +38,7 @@ function PageContent() {
     case 'suppliers': return <Suppliers />
     case 'expenses': return <Expenses />
     case 'reports': return <Reports />
+    case 'settings': return <Settings />
     default: return <Dashboard />
   }
 }

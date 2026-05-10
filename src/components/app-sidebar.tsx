@@ -14,7 +14,8 @@ import {
   DollarSign, 
   BarChart3, 
   ChevronRight,
-  Store
+  Store,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -30,6 +31,7 @@ const navItems: { page: Page; label: string; icon: React.ElementType }[] = [
   { page: 'suppliers', label: 'تأمین‌کنندگان', icon: Truck },
   { page: 'expenses', label: 'هزینه‌ها', icon: DollarSign },
   { page: 'reports', label: 'گزارش‌ها', icon: BarChart3 },
+  { page: 'settings', label: 'تنظیمات', icon: Settings },
 ]
 
 export function AppSidebar() {

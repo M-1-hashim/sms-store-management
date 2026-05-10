@@ -97,3 +97,20 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Settings {
+  id          String   @id @default("main")
+  storeName   String   @default("فروشگاه من")
+  storeNameEn String   @default("My Store")
+  address     String   @default("")
+  phone       String   @default("")
+  email       String   @default("")
+  logo        String?
+  taxNumber   String   @default("")
+  invoicePrefix String @default("INV")
+  invoiceFooter String @default("با تشکر از خرید شما")
+  currency    String   @default("افغانی")
+  itemsPerPage Int     @default(20)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
