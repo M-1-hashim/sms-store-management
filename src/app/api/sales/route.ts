@@ -131,26 +131,25 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = saleItems.reduce((sum, i) => sum + i.totalPrice, 0);
     const finalAmount = totalAmount - discountAmount;
-    const parsedPaidAmount = parseFloat(paidAmount) || finalAmount;
+    const parsedPaidAmount = paidAmount != null ? parseFloat(paidAmount) : finalAmount;
     const change = parsedPaidAmount - finalAmount;
 
-    // Generate invoice number
-    const lastSale = await db.sale.findFirst({
-      orderBy: { createdAt: "desc" },
-      select: { invoiceNumber: true },
-    });
-
-    let invoiceNum = 1;
-    if (lastSale) {
-      const match = lastSale.invoiceNumber.match(/INV-(\d+)/);
-      if (match) {
-        invoiceNum = parseInt(match[1], 10) + 1;
-      }
-    }
-    const invoiceNumber = `INV-${String(invoiceNum).padStart(4, "0")}`;
-
-    // Execute in a transaction
+    // Execute in a transaction (invoice number generation inside to avoid race conditions)
     const sale = await db.$transaction(async (tx) => {
+      // Generate invoice number inside transaction to prevent duplicates
+      const lastSale = await tx.sale.findFirst({
+        orderBy: { createdAt: "desc" },
+        select: { invoiceNumber: true },
+      });
+
+      let invoiceNum = 1;
+      if (lastSale) {
+        const match = lastSale.invoiceNumber.match(/INV-(\d+)/);
+        if (match) {
+          invoiceNum = parseInt(match[1], 10) + 1;
+        }
+      }
+      const invoiceNumber = `INV-${String(invoiceNum).padStart(4, "0")}`;
       // Create the sale
       const newSale = await tx.sale.create({
         data: {

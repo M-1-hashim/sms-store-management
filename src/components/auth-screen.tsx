@@ -274,7 +274,7 @@ export function AuthScreen() {
                       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
-                          style={{ width: `${Math.min((strength.score / 5) * 100, 100)}%` }}
+                          style={{ width: `${Math.min((strength.score / 6) * 100, 100)}%` }}
                         />
                       </div>
                       <span className="text-xs text-muted-foreground">{strength.label}</span>

@@ -100,7 +100,7 @@ function getPaymentBadgeClass(method: string) {
   switch (method) {
     case 'نقدی':
       return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-    case 'کارتی':
+    case 'کارت بانکی':
       return 'bg-sky-100 text-sky-800 border-sky-200'
     case 'نسیه':
       return 'bg-amber-100 text-amber-800 border-amber-200'
@@ -315,7 +315,7 @@ export default function SalesPage() {
                 <SelectContent>
                   <SelectItem value="همه">همه</SelectItem>
                   <SelectItem value="نقدی">نقدی</SelectItem>
-                  <SelectItem value="کارتی">کارتی</SelectItem>
+                  <SelectItem value="کارت بانکی">کارت بانکی</SelectItem>
                   <SelectItem value="نسیه">نسیه</SelectItem>
                 </SelectContent>
               </Select>

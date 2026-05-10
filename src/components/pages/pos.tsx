@@ -264,7 +264,7 @@ export default function POSPage() {
                 date: new Date().toLocaleDateString('fa-AF', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
                 customer: customerSnapshot ? { name: customerSnapshot.name, phone: customerSnapshot.phone } : null,
                 items: cartItemsSnapshot.map(item => ({
-                  name: item.name,
+                  name: item.productName,
                   quantity: item.quantity,
                   unitPrice: item.price,
                   totalPrice: item.price * item.quantity,

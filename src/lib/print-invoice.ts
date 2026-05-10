@@ -32,6 +32,15 @@ export interface InvoiceData {
   notes?: string | null
 }
 
+function sanitizeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 export async function printInvoice(data: InvoiceData) {
   const toFarsi = (n: number) => n.toLocaleString('fa-AF')
 
@@ -62,7 +71,7 @@ export async function printInvoice(data: InvoiceData) {
       (item, i) => `
       <tr>
         <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#64748b;">${toFarsi(i + 1)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:500;color:#1e293b;">${item.name}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:500;color:#1e293b;">${sanitizeHtml(item.name)}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;text-align:center;color:#475569;">${toFarsi(item.quantity)}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;text-align:left;color:#475569;">${toFarsi(item.unitPrice)}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;text-align:left;font-weight:600;color:#0f172a;">${toFarsi(item.totalPrice)}</td>
@@ -83,7 +92,8 @@ export async function printInvoice(data: InvoiceData) {
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>فاکتور ${data.invoiceNumber}</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src https://fonts.gstatic.com;">
+  <title>فاکتور ${sanitizeHtml(data.invoiceNumber)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -330,8 +340,8 @@ export async function printInvoice(data: InvoiceData) {
     <div class="header">
       <div class="brand">
         ${settings.logo ? `<img src="${settings.logo}" style="width:56px;height:56px;border-radius:12px;margin-bottom:8px;object-fit:cover;" />` : ''}
-        <div class="brand-name">${settings.storeName}</div>
-        <div class="brand-sub">${settings.storeNameEn}</div>
+        <div class="brand-name">${sanitizeHtml(settings.storeName)}</div>
+        <div class="brand-sub">${sanitizeHtml(settings.storeNameEn)}</div>
       </div>
       <div class="invoice-badge">
         <div class="invoice-label">شماره فاکتور</div>
@@ -343,16 +353,16 @@ export async function printInvoice(data: InvoiceData) {
     <div class="info-grid">
       <div class="info-card">
         <div class="info-label">📅 تاریخ صدور</div>
-        <div class="info-value">${data.date}</div>
+        <div class="info-value">${sanitizeHtml(data.date)}</div>
       </div>
       <div class="info-card">
         <div class="info-label">👤 مشتری</div>
-        <div class="info-value">${data.customer?.name || 'بدون مشتری'}</div>
-        ${data.customer?.phone ? `<div style="font-size:12px;color:#94a3b8;margin-top:2px;direction:ltr;text-align:right;">${data.customer.phone}</div>` : ''}
+        <div class="info-value">${sanitizeHtml(data.customer?.name || 'بدون مشتری')}</div>
+        ${data.customer?.phone ? `<div style="font-size:12px;color:#94a3b8;margin-top:2px;direction:ltr;text-align:right;">${sanitizeHtml(data.customer.phone)}</div>` : ''}
       </div>
       <div class="info-card">
         <div class="info-label">💰 روش پرداخت</div>
-        <div><span class="payment-badge">${data.paymentMethod}</span></div>
+        <div><span class="payment-badge">${sanitizeHtml(data.paymentMethod)}</span></div>
       </div>
       <div class="info-card">
         <div class="info-label">📦 تعداد اقلام</div>
@@ -409,25 +419,25 @@ export async function printInvoice(data: InvoiceData) {
     ${data.notes ? `
     <div class="notes">
       <div class="notes-title">📝 یادداشت:</div>
-      <div>${data.notes}</div>
+      <div>${sanitizeHtml(data.notes || '')}</div>
     </div>` : ''}
 
     ${settings.phone || settings.email || settings.address ? `
     <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px;padding:12px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:12px;color:#64748b;">
-      ${settings.phone ? `<span>📞 ${settings.phone}</span>` : ''}
-      ${settings.email ? `<span>✉️ ${settings.email}</span>` : ''}
-      ${settings.address ? `<span>📍 ${settings.address}</span>` : ''}
-      ${settings.taxNumber ? `<span>🔢 ${settings.taxNumber}</span>` : ''}
+      ${settings.phone ? `<span>📞 ${sanitizeHtml(settings.phone)}</span>` : ''}
+      ${settings.email ? `<span>✉️ ${sanitizeHtml(settings.email)}</span>` : ''}
+      ${settings.address ? `<span>📍 ${sanitizeHtml(settings.address)}</span>` : ''}
+      ${settings.taxNumber ? `<span>🔢 ${sanitizeHtml(settings.taxNumber)}</span>` : ''}
     </div>` : ''}
 
     <!-- Footer -->
     <div class="footer">
       <div class="footer-right">
-        <div class="footer-text">${settings.invoiceFooter || 'با تشکر از خرید شما'}</div>
+        <div class="footer-text">${sanitizeHtml(settings.invoiceFooter || 'با تشکر از خرید شما')}</div>
         <div class="footer-text">این فاکتور به صورت خودکار تولید شده است</div>
       </div>
       <div class="footer-left">
-        <div class="barcode-area">${data.invoiceNumber}</div>
+        <div class="barcode-area">${sanitizeHtml(data.invoiceNumber)}</div>
       </div>
     </div>
   </div>

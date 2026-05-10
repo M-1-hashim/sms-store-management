@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync, copyFileSync } from 'fs'
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync, copyFileSync, resolve } from 'fs'
 import { join } from 'path'
 import { writeFile } from 'fs/promises'
 import { db } from '@/lib/db'
@@ -30,11 +30,14 @@ export async function GET(request: Request) {
   // Download a specific backup
   if (action === 'download' && filename) {
     try {
-      const filePath = join(BACKUP_DIR, filename)
-      if (!existsSync(filePath)) {
+      const safePath = resolve(BACKUP_DIR, filename)
+      if (!safePath.startsWith(BACKUP_DIR)) {
+        return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
+      }
+      if (!existsSync(safePath)) {
         return NextResponse.json({ success: false, error: 'فایل پشتیبان یافت نشد' }, { status: 404 })
       }
-      const fileBuffer = readFileSync(filePath)
+      const fileBuffer = readFileSync(safePath)
       return new NextResponse(fileBuffer, {
         headers: {
           'Content-Type': 'application/octet-stream',
@@ -50,8 +53,11 @@ export async function GET(request: Request) {
   // Delete a backup
   if (action === 'delete' && filename) {
     try {
-      const filePath = join(BACKUP_DIR, filename)
-      if (existsSync(filePath)) unlinkSync(filePath)
+      const safePath = resolve(BACKUP_DIR, filename)
+      if (!safePath.startsWith(BACKUP_DIR)) {
+        return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
+      }
+      if (existsSync(safePath)) unlinkSync(safePath)
       return NextResponse.json({ success: true, message: 'پشتیبان حذف شد' })
     } catch (error) {
       console.error('Error deleting backup:', error)
@@ -246,7 +252,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'نام فایل مشخص نشده' }, { status: 400 })
       }
 
-      const restorePath = join(BACKUP_DIR, filename)
+      const restorePath = resolve(BACKUP_DIR, filename)
+      if (!restorePath.startsWith(BACKUP_DIR)) {
+        return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
+      }
       if (!existsSync(restorePath)) {
         return NextResponse.json({ success: false, error: 'فایل پشتیبان یافت نشد' }, { status: 404 })
       }

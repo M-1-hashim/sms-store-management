@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server'
 import { hash, compare } from 'bcryptjs'
-import { randomBytes } from 'crypto'
+import { randomBytes, timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
 
 const SALT_ROUNDS = 12
 const SESSION_DURATION_HOURS = 24
 const MAX_FAILED_ATTEMPTS = 5
 const LOCKOUT_MINUTES = 15
+
+// Timing-safe token comparison
+function safeTokenCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  try {
+    return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  } catch {
+    return false
+  }
+}
 
 // Generate a secure random session token
 function generateSessionToken(): string {
@@ -50,7 +60,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'نشست معتبر نیست' }, { status: 401 })
     }
 
-    if (settings.sessionToken !== token) {
+    if (!safeTokenCompare(settings.sessionToken, token)) {
       return NextResponse.json({ success: false, error: 'توکن نامعتبر' }, { status: 401 })
     }
 
@@ -226,7 +236,7 @@ export async function POST(request: Request) {
       const authHeader = request.headers.get('authorization')
       const token = authHeader?.replace('Bearer ', '')
 
-      if (!token || settings.sessionToken !== token) {
+      if (!token || !safeTokenCompare(settings.sessionToken, token)) {
         return NextResponse.json({ success: false, error: 'احراز هویت ناموفق' }, { status: 401 })
       }
 
@@ -272,7 +282,7 @@ export async function POST(request: Request) {
       const token = authHeader?.replace('Bearer ', '')
 
       // Only clear session if token matches
-      if (token && settings.sessionToken === token) {
+      if (token && safeTokenCompare(settings.sessionToken, token)) {
         await db.settings.update({
           where: { id: 'main' },
           data: { sessionToken: null, sessionExpiry: null },
@@ -292,7 +302,7 @@ export async function POST(request: Request) {
 
       const settings = await ensureSettings()
 
-      if (settings.sessionToken !== token) {
+      if (!safeTokenCompare(settings.sessionToken, token)) {
         return NextResponse.json({ success: false, error: 'توکن نامعتبر' }, { status: 401 })
       }
 
