@@ -9,13 +9,11 @@ import { AuthScreen } from '@/components/auth-screen'
 import { cn } from '@/lib/utils'
 import { Menu, X, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useSyncExternalStore } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 
 // Lazy imports for page components
 import dynamic from 'next/dynamic'
-
-const emptySubscribe = () => () => {}
 
 const Dashboard = dynamic(() => import('@/components/pages/dashboard'), { ssr: false })
 const Products = dynamic(() => import('@/components/pages/products'), { ssr: false })
@@ -46,14 +44,6 @@ function PageContent() {
     case 'settings': return <Settings />
     default: return <Dashboard />
   }
-}
-
-function useMounted() {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  )
 }
 
 function AppContent() {
@@ -153,8 +143,12 @@ function AppContent() {
 }
 
 export default function HomePage() {
-  const mounted = useMounted()
+  const [mounted, setMounted] = useState(false)
   const { isAuthenticated } = useAuthStore()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Wait for hydration only
   if (!mounted) {
