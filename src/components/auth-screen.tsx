@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthStore, getStoredToken } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,8 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Lock, Eye, EyeOff, Loader2, Shield, ShieldCheck, KeyRound, Store } from 'lucide-react'
 import { toast } from 'sonner'
-
-const emptySubscribe = () => () => {}
 
 // Password strength calculator
 function getPasswordStrength(password: string): { score: number; label: string; color: string } {
@@ -39,7 +37,7 @@ export function AuthScreen() {
     logout,
   } = useAuthStore()
 
-  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
+  const [mounted, setMounted] = useState(false)
 
   // Setup mode
   const [setupPassword, setSetupPassword] = useState('')
@@ -56,6 +54,7 @@ export function AuthScreen() {
 
   // Check if password is set and validate existing session on mount
   useEffect(() => {
+    setMounted(true)
     async function init() {
       try {
         // Check if password has been set

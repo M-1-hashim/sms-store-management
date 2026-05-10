@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label'
 import { useCartStore, type CartItem } from '@/lib/store'
 import { printInvoice } from '@/lib/print-invoice'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/auth-store'
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -163,9 +164,9 @@ export default function POSPage() {
     try {
       setLoading(true)
       const [productsRes, categoriesRes, customersRes] = await Promise.all([
-        fetch('/api/products?limit=100'),
-        fetch('/api/categories'),
-        fetch('/api/customers?limit=100'),
+        apiFetch('/api/products?limit=100'),
+        apiFetch('/api/categories'),
+        apiFetch('/api/customers?limit=100'),
       ])
 
       const [productsJson, categoriesJson, customersJson] = await Promise.all([
@@ -234,7 +235,7 @@ export default function POSPage() {
         paidAmount: finalTotal,
       }
 
-      const res = await fetch('/api/sales', {
+      const res = await apiFetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(saleData),

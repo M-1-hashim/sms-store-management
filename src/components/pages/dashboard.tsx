@@ -53,6 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/auth-store'
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -258,7 +259,7 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/dashboard?period=30')
+      const res = await apiFetch('/api/dashboard?period=30')
       const json = await res.json()
       if (json.success) {
         setData(json.data)

@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Plus, Edit, Trash2, Phone, Mail, MapPin, Truck } from 'lucide-react'
+import { apiFetch } from '@/lib/auth-store'
 
 // --- Types ---
 interface Supplier {
@@ -91,7 +92,7 @@ export default function SuppliersPage() {
   const fetchSuppliers = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/suppliers')
+      const res = await apiFetch('/api/suppliers')
       const json = await res.json()
       if (json.success) {
         setSuppliers(json.data || [])
@@ -143,7 +144,7 @@ export default function SuppliersPage() {
         : '/api/suppliers'
       const method = editingSupplier ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -170,7 +171,7 @@ export default function SuppliersPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/suppliers/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/suppliers/${id}`, { method: 'DELETE' })
       const json = await res.json()
       if (json.success) {
         toast.success('تأمین‌کننده با موفقیت حذف شد')

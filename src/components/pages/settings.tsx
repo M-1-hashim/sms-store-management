@@ -62,7 +62,7 @@ import {
   ShieldCheck,
   Lock,
 } from 'lucide-react'
-import { useAuthStore } from '@/lib/auth-store'
+import { useAuthStore, apiFetch } from '@/lib/auth-store'
 import { useTheme } from 'next-themes'
 import { Switch } from '@/components/ui/switch'
 
@@ -174,7 +174,7 @@ export default function SettingsPage() {
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const res = await fetch('/api/settings')
+        const res = await apiFetch('/api/settings')
         const json = await res.json()
         if (json.success && json.data) {
           const s = json.data as SettingsData
@@ -231,7 +231,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     try {
       setSaving(true)
-      const res = await fetch('/api/settings', {
+      const res = await apiFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -288,7 +288,7 @@ export default function SettingsPage() {
   const fetchBackups = useCallback(async () => {
     try {
       setLoadingBackups(true)
-      const res = await fetch('/api/backup')
+      const res = await apiFetch('/api/backup')
       const json = await res.json()
       if (json.success) setBackups(json.data || [])
     } catch { toast.error('خطا در دریافت لیست پشتیبان‌ها') }
@@ -298,7 +298,7 @@ export default function SettingsPage() {
   const handleCreateBackup = async () => {
     try {
       setCreatingBackup(true)
-      const res = await fetch('/api/backup', {
+      const res = await apiFetch('/api/backup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'create' }),
@@ -312,7 +312,7 @@ export default function SettingsPage() {
 
   const handleRestoreBackup = async (filename: string) => {
     try {
-      const res = await fetch('/api/backup', {
+      const res = await apiFetch('/api/backup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'restore', filename }),
@@ -327,7 +327,7 @@ export default function SettingsPage() {
 
   const handleDeleteBackup = async (filename: string) => {
     try {
-      const res = await fetch(`/api/backup?action=delete&file=${encodeURIComponent(filename)}`)
+      const res = await apiFetch(`/api/backup?action=delete&file=${encodeURIComponent(filename)}`)
       const json = await res.json()
       if (json.success) { toast.success('پشتیبان حذف شد'); fetchBackups() }
       else toast.error(json.error || 'خطا در حذف')
@@ -365,7 +365,7 @@ export default function SettingsPage() {
       const form = new FormData()
       form.append('file', file)
 
-      const res = await fetch('/api/backup', {
+      const res = await apiFetch('/api/backup', {
         method: 'POST',
         body: form,
       })
@@ -432,7 +432,7 @@ export default function SettingsPage() {
     }
     try {
       setChangingPassword(true)
-      const res = await fetch('/api/auth', {
+      const res = await apiFetch('/api/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

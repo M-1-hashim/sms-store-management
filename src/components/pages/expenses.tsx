@@ -51,6 +51,7 @@ import {
   Receipt,
   TrendingDown,
 } from 'lucide-react'
+import { apiFetch } from '@/lib/auth-store'
 
 // --- Types ---
 interface Expense {
@@ -179,7 +180,7 @@ export default function ExpensesPage() {
       if (dateTo) params.set('to', dateTo)
       if (categoryFilter !== 'همه') params.set('category', categoryFilter)
 
-      const res = await fetch(`/api/expenses?${params}`)
+      const res = await apiFetch(`/api/expenses?${params}`)
       const json = await res.json()
       if (json.success) {
         setExpenses(json.data.expenses || json.data || [])
@@ -220,7 +221,7 @@ export default function ExpensesPage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/expenses', {
+      const res = await apiFetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -249,7 +250,7 @@ export default function ExpensesPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/expenses/${id}`, { method: 'DELETE' })
       const json = await res.json()
       if (json.success) {
         toast.success('هزینه با موفقیت حذف شد')

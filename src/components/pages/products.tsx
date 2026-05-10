@@ -50,6 +50,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiFetch } from '@/lib/auth-store'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export default function ProductsPage() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/categories')
+      const res = await apiFetch('/api/categories')
       const json = await res.json()
       if (json.success) setCategories(json.data)
     } catch {
@@ -181,7 +182,7 @@ export default function ProductsPage() {
       if (search.trim()) params.set('search', search.trim())
       if (categoryFilter !== 'all') params.set('categoryId', categoryFilter)
 
-      const res = await fetch(`/api/products?${params.toString()}`)
+      const res = await apiFetch(`/api/products?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
         let filtered = json.data.products as Product[]
@@ -277,13 +278,13 @@ export default function ProductsPage() {
 
       let res: Response
       if (editingProduct) {
-        res = await fetch(`/api/products/${editingProduct.id}`, {
+        res = await apiFetch(`/api/products/${editingProduct.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
       } else {
-        res = await fetch('/api/products', {
+        res = await apiFetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -316,7 +317,7 @@ export default function ProductsPage() {
   async function handleDelete() {
     if (!deletingProduct) return
     try {
-      const res = await fetch(`/api/products/${deletingProduct.id}`, {
+      const res = await apiFetch(`/api/products/${deletingProduct.id}`, {
         method: 'DELETE',
       })
       const json = await res.json()

@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiFetch } from '@/lib/auth-store'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ export default function InventoryPage() {
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/products?limit=100')
+      const res = await apiFetch('/api/products?limit=100')
       const json = await res.json()
       if (json.success) {
         setProducts(json.data.products || [])
@@ -115,7 +116,7 @@ export default function InventoryPage() {
   const fetchDashboard = useCallback(async () => {
     setLowStockLoading(true)
     try {
-      const res = await fetch('/api/dashboard')
+      const res = await apiFetch('/api/dashboard')
       const json = await res.json()
       if (json.success) {
         setDashboardData(json.data)

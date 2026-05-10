@@ -54,6 +54,7 @@ import {
   Calculator,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/auth-store'
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -272,7 +273,7 @@ function SalesReportTab() {
       if (dateFrom) params.set('from', dateFrom)
       if (dateTo) params.set('to', dateTo)
 
-      const res = await fetch(`/api/reports?${params}`)
+      const res = await apiFetch(`/api/reports?${params}`)
       const json = await res.json()
       if (json.success) {
         const d = json.data
@@ -613,7 +614,7 @@ function InventoryReportTab() {
   const fetchReport = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/reports?type=inventory')
+      const res = await apiFetch('/api/reports?type=inventory')
       const json = await res.json()
       if (json.success) {
         const d = json.data
@@ -899,7 +900,7 @@ function ProfitReportTab() {
       if (dateFrom) params.set('from', dateFrom)
       if (dateTo) params.set('to', dateTo)
 
-      const res = await fetch(`/api/reports?${params}`)
+      const res = await apiFetch(`/api/reports?${params}`)
       const json = await res.json()
       if (json.success) {
         const s = json.data.summary || {}

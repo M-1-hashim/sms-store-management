@@ -41,6 +41,7 @@ import {
   Camera, Upload, X, Users, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { apiFetch } from '@/lib/auth-store'
 
 // --- Types ---
 interface Customer {
@@ -283,7 +284,7 @@ export default function CustomersPage() {
       const params = new URLSearchParams({ page: String(pageNum), limit: '20' })
       if (search) params.set('search', search)
 
-      const res = await fetch(`/api/customers?${params}`)
+      const res = await apiFetch(`/api/customers?${params}`)
       const json = await res.json()
       if (json.success) {
         const newCustomers = json.data?.customers || []
@@ -349,7 +350,7 @@ export default function CustomersPage() {
         : '/api/customers'
       const method = editingCustomer ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -373,7 +374,7 @@ export default function CustomersPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/customers/${id}`, { method: 'DELETE' })
       const json = await res.json()
       if (json.success) {
         toast.success('مشتری با موفقیت حذف شد')

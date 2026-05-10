@@ -34,6 +34,7 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { printInvoice } from '@/lib/print-invoice'
 import { Search, Eye, CalendarDays, Filter, Receipt, ChevronDown, Printer } from 'lucide-react'
+import { apiFetch } from '@/lib/auth-store'
 
 // --- Types ---
 interface SaleItem {
@@ -189,7 +190,7 @@ export default function SalesPage() {
       if (paymentMethod !== 'همه') params.set('payment', paymentMethod)
       if (searchQuery) params.set('search', searchQuery)
 
-      const res = await fetch(`/api/sales?${params}`)
+      const res = await apiFetch(`/api/sales?${params}`)
       const json = await res.json()
       if (json.success) {
         // API returns { data: { sales: [...], pagination: { total, ... } } }
@@ -222,7 +223,7 @@ export default function SalesPage() {
     setDetailLoading(true)
     setSelectedSale(null)
     try {
-      const res = await fetch(`/api/sales/${saleId}`)
+      const res = await apiFetch(`/api/sales/${saleId}`)
       const json = await res.json()
       if (json.success) {
         // API returns the full sale object with nested customer and items (with product)

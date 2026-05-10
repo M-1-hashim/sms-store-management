@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiFetch } from '@/lib/auth-store'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ export default function CategoriesPage() {
   const fetchCategories = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/categories')
+      const res = await apiFetch('/api/categories')
       const json = await res.json()
       if (json.success) {
         setCategories(json.data)
@@ -147,13 +148,13 @@ export default function CategoriesPage() {
 
       let res: Response
       if (editingCategory) {
-        res = await fetch(`/api/categories/${editingCategory.id}`, {
+        res = await apiFetch(`/api/categories/${editingCategory.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
       } else {
-        res = await fetch('/api/categories', {
+        res = await apiFetch('/api/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -189,7 +190,7 @@ export default function CategoriesPage() {
   async function handleDelete() {
     if (!deletingCategory) return
     try {
-      const res = await fetch(`/api/categories/${deletingCategory.id}`, {
+      const res = await apiFetch(`/api/categories/${deletingCategory.id}`, {
         method: 'DELETE',
       })
       const json = await res.json()
