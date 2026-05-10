@@ -1,5 +1,5 @@
 // ─── Invoice Print Utility ────────────────────────────────────────────
-// Opens a beautiful RTL invoice in a new window for printing
+// Prints invoice using hidden iframe (no popup blocker issues)
 
 import { apiFetch } from '@/lib/auth-store'
 
@@ -72,7 +72,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src https://fonts.gstatic.com;">
   <title>فاکتور ${sanitizeHtml(data.invoiceNumber)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -85,17 +84,12 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    @media print {
-      body { padding: 0; }
-      .no-print { display: none !important; }
-      @page { margin: 12mm; size: A4; }
-    }
+    @page { margin: 12mm; size: A4; }
     .invoice {
       max-width: 800px;
       margin: 0 auto;
       padding: 40px;
     }
-    /* Header */
     .header {
       display: flex;
       justify-content: space-between;
@@ -137,7 +131,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
       direction: ltr;
       text-align: left;
     }
-    /* Info Grid */
     .info-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -170,7 +163,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
       color: #fff;
       background: ${paymentMethodColor};
     }
-    /* Table */
     .table-wrapper {
       margin-bottom: 24px;
       border: 1px solid #e2e8f0;
@@ -195,7 +187,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
     thead th:nth-child(5) {
       text-align: center;
     }
-    /* Totals */
     .totals {
       display: flex;
       justify-content: flex-end;
@@ -233,7 +224,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
       color: #059669;
       font-weight: 500;
     }
-    /* Footer */
     .footer {
       display: flex;
       justify-content: space-between;
@@ -264,7 +254,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
       border-radius: 8px;
       border: 1px dashed #e2e8f0;
     }
-    /* Notes */
     .notes {
       margin-bottom: 20px;
       padding: 12px 16px;
@@ -277,62 +266,6 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
     .notes-title {
       font-weight: 600;
       margin-bottom: 4px;
-    }
-    /* Loading */
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 400px;
-      gap: 16px;
-      font-family: 'Vazirmatn', system-ui, sans-serif;
-      color: #94a3b8;
-    }
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid #e2e8f0;
-      border-top: 3px solid #0f172a;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    /* Print Button */
-    .print-btn {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 14px 40px;
-      background: #0f172a;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      font-family: 'Vazirmatn', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .print-btn:hover {
-      background: #1e293b;
-      transform: translateX(-50%) translateY(-2px);
-      box-shadow: 0 6px 25px rgba(0,0,0,0.25);
-    }
-    .watermark {
-      position: fixed;
-      bottom: 90px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      color: #cbd5e1;
     }
   </style>
 </head>
@@ -443,64 +376,11 @@ function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
       </div>
     </div>
   </div>
-
-  <!-- Print Button -->
-  <button class="print-btn no-print" onclick="window.print()">
-    🖨️ چاپ فاکتور
-  </button>
-  <div class="watermark no-print">SMS — Store Management System</div>
 </body>
 </html>`
 }
 
-function buildLoadingHtml(invoiceNumber: string): string {
-  return `<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>فاکتور ${sanitizeHtml(invoiceNumber)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    body { margin: 0; padding: 0; font-family: 'Vazirmatn', system-ui, sans-serif; }
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      gap: 16px;
-      color: #94a3b8;
-    }
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid #e2e8f0;
-      border-top: 3px solid #0f172a;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .loading-text {
-      font-size: 15px;
-      font-weight: 500;
-    }
-  </style>
-</head>
-<body>
-  <div class="loading-container">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">در حال آماده‌سازی فاکتور...</div>
-  </div>
-</body>
-</html>`
-}
-
-export function printInvoice(data: InvoiceData) {
-  const toFarsi = (n: number) => n.toLocaleString('fa-AF')
-
-  // Default settings (used if fetch fails)
+export async function printInvoice(data: InvoiceData) {
   const defaultSettings: StoreSettings = {
     storeName: 'فروشگاه من',
     storeNameEn: 'My Store',
@@ -513,43 +393,54 @@ export function printInvoice(data: InvoiceData) {
     currency: 'افغانی',
   }
 
-  // CRITICAL: Open the window IMMEDIATELY (synchronously) while still in
-  // the user-click context. If we await first, the browser's popup blocker
-  // will block window.open() because it's no longer a direct user gesture.
-  const printWindow = window.open('', '_blank', 'width=850,height=900')
-
-  if (!printWindow) {
-    // Popup was blocked — nothing we can do except inform the user
-    const fallback = window.open('', '_blank')
-    if (fallback) {
-      fallback.document.write(buildLoadingHtml(data.invoiceNumber))
-      fallback.document.close()
+  // Fetch settings from API
+  let settings = defaultSettings
+  try {
+    const res = await apiFetch('/api/settings')
+    const json = await res.json()
+    if (json.success && json.data) {
+      settings = { ...defaultSettings, ...json.data }
     }
-    return
+  } catch {
+    // Use default settings if fetch fails
   }
 
-  // Show a loading state immediately
-  printWindow.document.write(buildLoadingHtml(data.invoiceNumber))
-  printWindow.document.close()
+  // Build the invoice HTML
+  const html = buildInvoiceHtml(data, settings)
 
-  // Now fetch settings asynchronously and update the window
-  apiFetch('/api/settings')
-    .then((res) => res.json())
-    .then((json) => {
-      const settings: StoreSettings = json.success && json.data
-        ? { ...defaultSettings, ...json.data }
-        : defaultSettings
+  // Use iframe to avoid popup blockers
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = 'none'
+  iframe.style.opacity = '0'
+  document.body.appendChild(iframe)
 
-      const html = buildInvoiceHtml(data, settings)
-      printWindow.document.open()
-      printWindow.document.write(html)
-      printWindow.document.close()
-    })
-    .catch(() => {
-      // If settings fetch fails, render with default settings
-      const html = buildInvoiceHtml(data, defaultSettings)
-      printWindow.document.open()
-      printWindow.document.write(html)
-      printWindow.document.close()
-    })
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+  if (!iframeDoc) return
+
+  iframeDoc.open()
+  iframeDoc.write(html)
+  iframeDoc.close()
+
+  // Wait for fonts and styles to load, then print
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus()
+        iframe.contentWindow?.print()
+      } catch {
+        // Fallback: print the current window
+        window.print()
+      }
+
+      // Clean up iframe after print dialog closes
+      setTimeout(() => {
+        document.body.removeChild(iframe)
+      }, 1000)
+    }, 500)
+  }
 }
