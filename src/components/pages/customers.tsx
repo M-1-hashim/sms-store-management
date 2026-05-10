@@ -46,7 +46,6 @@ interface Customer {
   email: string | null
   address: string | null
   balance: number
-  totalPurchases?: number
 }
 
 interface CustomerFormData {
@@ -110,8 +109,9 @@ export default function CustomersPage() {
       const res = await fetch(`/api/customers?${params}`)
       const json = await res.json()
       if (json.success) {
-        setCustomers(json.data || [])
-        setTotal(json.total || json.data?.length || 0)
+        // API returns { data: { customers: [...], pagination: { total } } }
+        setCustomers(json.data?.customers || [])
+        setTotal(json.data?.pagination?.total || 0)
       } else {
         toast.error('خطا در دریافت اطلاعات مشتریان')
       }
@@ -247,7 +247,6 @@ export default function CustomersPage() {
                     <TableHead>ایمیل</TableHead>
                     <TableHead>آدرس</TableHead>
                     <TableHead>مانده حساب</TableHead>
-                    <TableHead>تعداد خرید</TableHead>
                     <TableHead>عملیات</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -287,11 +286,6 @@ export default function CustomersPage() {
                         >
                           {formatNumber(customer.balance)} افغانی
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {customer.totalPurchases != null
-                          ? formatNumber(customer.totalPurchases)
-                          : '—'}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -340,7 +334,7 @@ export default function CustomersPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 border-t mt-4">
               <span className="text-sm text-muted-foreground">
-                صفحه {formatNumber(page)} از {formatNumber(totalPages)}
+                صفحه {formatNumber(page)} از {formatNumber(totalPages)} — {formatNumber(total)} مشتری
               </span>
               <div className="flex gap-2">
                 <Button

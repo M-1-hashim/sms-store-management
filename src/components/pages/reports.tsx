@@ -29,30 +29,6 @@ import {
   ArrowDownRight,
 } from 'lucide-react'
 
-// --- Types ---
-interface SalesReportData {
-  totalSales: number
-  totalAmount: number
-  salesByPayment: Record<string, number>
-  dailySales: { date: string; count: number; total: number }[]
-}
-
-interface InventoryReportData {
-  totalValue: number
-  categories: { name: string; value: number; count: number }[]
-  products: { name: string; stock: number; value: number }[]
-}
-
-interface ProfitReportData {
-  revenue: number
-  cogs: number
-  grossProfit: number
-  totalExpenses: number
-  netProfit: number
-  profitMargin: number
-  expensesByCategory: { category: string; total: number }[]
-}
-
 // --- Helpers ---
 function formatNumber(n: number): string {
   return n.toLocaleString('fa-AF')
@@ -102,10 +78,18 @@ function ReportTableSkeleton() {
   )
 }
 
-// --- Sales Report Tab ---
+// ========================================================
+// Sales Report Tab
+// API returns:
+//   data.summary: { totalSales, totalRevenue, averageSale, ... }
+//   data.byPaymentMethod: [{ paymentMethod, _sum: { finalAmount }, _count }]
+//   data.dailySales: { "2024-01-01": 1234, "2024-01-02": 5678, ... }
+// ========================================================
 function SalesReportTab() {
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<SalesReportData | null>(null)
+  const [summary, setSummary] = useState<Record<string, unknown> | null>(null)
+  const [dailySales, setDailySales] = useState<{ date: string; count: number; total: number }[]>([])
+  const [byPayment, setByPayment] = useState<Record<string, number>>({})
   const [dateFrom, setDateFrom] = useState(getFirstDayOfMonth())
   const [dateTo, setDateTo] = useState(getToday())
 
@@ -119,7 +103,26 @@ function SalesReportTab() {
       const res = await fetch(`/api/reports?${params}`)
       const json = await res.json()
       if (json.success) {
-        setData(json.data)
+        const data = json.data
+        setSummary(data.summary || null)
+
+        // Convert dailySales object { "date": amount } → array [{ date, count, total }]
+        const raw = data.dailySales || {}
+        const days = Object.entries(raw).map(([date, total]) => ({
+          date,
+          count: 1, // API gives totals per day, count each as 1 entry
+          total: total as number,
+        }))
+        setDailySales(days)
+
+        // Convert byPaymentMethod array → record { "نقدی": amount }
+        const rawPay = data.byPaymentMethod || []
+        const payMap: Record<string, number> = {}
+        for (const item of rawPay) {
+          payMap[(item as Record<string, unknown>).paymentMethod as string] =
+            ((item as Record<string, unknown>)._sum as Record<string, unknown>)?.finalAmount as number || 0
+        }
+        setByPayment(payMap)
       } else {
         toast.error('خطا در دریافت گزارش فروش')
       }
@@ -134,9 +137,13 @@ function SalesReportTab() {
     fetchReport()
   }, [fetchReport])
 
-  const bestDay = data?.dailySales?.reduce(
+  const totalSales = (summary?.totalSales as number) || 0
+  const totalRevenue = (summary?.totalRevenue as number) || 0
+  const averageSale = (summary?.averageSale as number) || 0
+
+  const bestDay = dailySales.reduce(
     (best, d) => (d.total > (best?.total || 0) ? d : best),
-    data?.dailySales?.[0]
+    dailySales[0]
   )
 
   return (
@@ -181,7 +188,7 @@ function SalesReportTab() {
             <ReportCardSkeleton key={i} />
           ))}
         </div>
-      ) : data ? (
+      ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
@@ -191,7 +198,7 @@ function SalesReportTab() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">تعداد فروش</p>
-                  <p className="text-2xl font-bold">{formatNumber(data.totalSales)}</p>
+                  <p className="text-2xl font-bold">{formatNumber(totalSales)}</p>
                 </div>
               </div>
             </CardContent>
@@ -204,7 +211,7 @@ function SalesReportTab() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">مجموع فروش</p>
-                  <p className="text-2xl font-bold">{formatNumber(data.totalAmount)}</p>
+                  <p className="text-2xl font-bold">{formatNumber(totalRevenue)}</p>
                   <p className="text-xs text-muted-foreground">افغانی</p>
                 </div>
               </div>
@@ -219,9 +226,7 @@ function SalesReportTab() {
                 <div>
                   <p className="text-sm text-muted-foreground">میانگین فروش</p>
                   <p className="text-2xl font-bold">
-                    {data.totalSales > 0
-                      ? formatNumber(Math.round(data.totalAmount / data.totalSales))
-                      : '۰'}
+                    {totalSales > 0 ? formatNumber(Math.round(averageSale)) : '۰'}
                   </p>
                   <p className="text-xs text-muted-foreground">افغانی</p>
                 </div>
@@ -247,17 +252,17 @@ function SalesReportTab() {
             </CardContent>
           </Card>
         </div>
-      ) : null}
+      )}
 
       {/* Sales by Payment */}
-      {!loading && data && data.salesByPayment && (
+      {!loading && Object.keys(byPayment).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">فروش بر اساس روش پرداخت</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {Object.entries(data.salesByPayment).map(([method, amount]) => (
+              {Object.entries(byPayment).map(([method, amount]) => (
                 <div
                   key={method}
                   className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
@@ -280,7 +285,7 @@ function SalesReportTab() {
           <ScrollArea className="max-h-[400px]">
             {loading ? (
               <ReportTableSkeleton />
-            ) : data?.dailySales?.length === 0 ? (
+            ) : dailySales.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>داده‌ای برای نمایش وجود ندارد</p>
               </div>
@@ -289,15 +294,13 @@ function SalesReportTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>تاریخ</TableHead>
-                    <TableHead>تعداد فروش</TableHead>
                     <TableHead>مبلغ کل</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.dailySales?.map((day, idx) => (
+                  {dailySales.map((day, idx) => (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{formatDate(day.date)}</TableCell>
-                      <TableCell>{formatNumber(day.count)}</TableCell>
                       <TableCell className="font-semibold">
                         {formatNumber(day.total)} افغانی
                       </TableCell>
@@ -313,10 +316,18 @@ function SalesReportTab() {
   )
 }
 
-// --- Inventory Report Tab ---
+// ========================================================
+// Inventory Report Tab
+// API returns:
+//   data.summary: { totalProducts, totalInventoryValue, ... }
+//   data.byCategory: { "لباس": { count, totalStock, value }, ... }
+//   data.products: [{ id, name, stock, sellPrice, category, ... }]
+// ========================================================
 function InventoryReportTab() {
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<InventoryReportData | null>(null)
+  const [totalValue, setTotalValue] = useState(0)
+  const [categories, setCategories] = useState<{ name: string; value: number; count: number }[]>([])
+  const [products, setProducts] = useState<{ name: string; stock: number; value: number }[]>([])
 
   const fetchReport = useCallback(async () => {
     setLoading(true)
@@ -324,7 +335,25 @@ function InventoryReportTab() {
       const res = await fetch('/api/reports?type=inventory')
       const json = await res.json()
       if (json.success) {
-        setData(json.data)
+        const data = json.data
+        setTotalValue(data.summary?.totalInventoryValue || 0)
+
+        // Convert byCategory object → array
+        const rawCats = data.byCategory || {}
+        const cats = Object.entries(rawCats).map(([name, val]) => ({
+          name,
+          count: (val as Record<string, unknown>).count as number,
+          value: (val as Record<string, unknown>).value as number,
+        }))
+        setCategories(cats)
+
+        // Map products with calculated value
+        const prods = (data.products || []).map((p: Record<string, unknown>) => ({
+          name: p.name as string,
+          stock: p.stock as number,
+          value: (p.sellPrice as number) * (p.stock as number),
+        }))
+        setProducts(prods)
       } else {
         toast.error('خطا در دریافت گزارش موجودی')
       }
@@ -344,7 +373,7 @@ function InventoryReportTab() {
       {/* Total Inventory Value */}
       {loading ? (
         <ReportCardSkeleton />
-      ) : data ? (
+      ) : (
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -354,17 +383,17 @@ function InventoryReportTab() {
               <div>
                 <p className="text-sm text-muted-foreground">ارزش کل موجودی</p>
                 <p className="text-3xl font-bold">
-                  {formatNumber(data.totalValue)}{' '}
+                  {formatNumber(totalValue)}{' '}
                   <span className="text-base font-normal text-muted-foreground">افغانی</span>
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
       {/* Categories */}
-      {!loading && data && data.categories?.length > 0 && (
+      {!loading && categories.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">موجودی بر اساس دسته‌بندی</CardTitle>
@@ -380,7 +409,7 @@ function InventoryReportTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.categories.map((cat, idx) => (
+                  {categories.map((cat, idx) => (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{cat.name}</TableCell>
                       <TableCell>{formatNumber(cat.count)}</TableCell>
@@ -405,7 +434,7 @@ function InventoryReportTab() {
           <ScrollArea className="max-h-[400px]">
             {loading ? (
               <ReportTableSkeleton />
-            ) : data?.products?.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>محصولی برای نمایش وجود ندارد</p>
               </div>
@@ -419,7 +448,7 @@ function InventoryReportTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.products?.map((product, idx) => (
+                  {products.map((product, idx) => (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>
@@ -442,10 +471,23 @@ function InventoryReportTab() {
   )
 }
 
-// --- Profit Report Tab ---
+// ========================================================
+// Profit Report Tab
+// API returns:
+//   data.summary: { totalRevenue, totalCOGS, grossProfit, totalExpenses, netProfit, profitMargin: "12.5", ... }
+//   data.expenseByCategory: { "اجاره": 25000, "حقوق": 34000, ... }
+// ========================================================
 function ProfitReportTab() {
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<ProfitReportData | null>(null)
+  const [data, setData] = useState<{
+    revenue: number
+    cogs: number
+    grossProfit: number
+    totalExpenses: number
+    netProfit: number
+    profitMargin: number
+    expensesByCategory: { category: string; total: number }[]
+  } | null>(null)
   const [dateFrom, setDateFrom] = useState(getFirstDayOfMonth())
   const [dateTo, setDateTo] = useState(getToday())
 
@@ -459,7 +501,24 @@ function ProfitReportTab() {
       const res = await fetch(`/api/reports?${params}`)
       const json = await res.json()
       if (json.success) {
-        setData(json.data)
+        const s = json.data.summary || {}
+
+        // Convert expenseByCategory object → array
+        const rawExp = json.data.expenseByCategory || {}
+        const expArray = Object.entries(rawExp).map(([category, total]) => ({
+          category,
+          total: total as number,
+        }))
+
+        setData({
+          revenue: s.totalRevenue || 0,
+          cogs: s.totalCOGS || 0,
+          grossProfit: s.grossProfit || 0,
+          totalExpenses: s.totalExpenses || 0,
+          netProfit: s.netProfit || 0,
+          profitMargin: parseFloat(String(s.profitMargin)) || 0,
+          expensesByCategory: expArray,
+        })
       } else {
         toast.error('خطا در دریافت گزارش سودآوری')
       }
@@ -509,7 +568,7 @@ function ProfitReportTab() {
         </CardContent>
       </Card>
 
-      {/* Profit Summary */}
+      {/* Profit Summary Cards */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -623,7 +682,7 @@ function ProfitReportTab() {
           </Card>
 
           {/* Expenses by Category */}
-          {!loading && data.expensesByCategory?.length > 0 && (
+          {data.expensesByCategory.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">هزینه‌ها بر اساس دسته‌بندی</CardTitle>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,35 +32,42 @@ import {
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Search, Eye, CalendarDays, Filter } from 'lucide-react'
+import { Search, Eye, CalendarDays, Filter, Receipt } from 'lucide-react'
 
 // --- Types ---
 interface SaleItem {
   id: string
-  productName: string
+  productId: string
+  productName?: string
   quantity: number
   unitPrice: number
   totalPrice: number
+  product?: {
+    name: string
+    sku: string
+  }
 }
 
 interface Sale {
   id: string
   invoiceNumber: string
-  customerName: string | null
-  customerPhone: string | null
-  itemsCount: number
+  customerId: string | null
+  customer?: { name: string; phone: string } | null
+  items?: SaleItem[]
   totalAmount: number
   discount: number
   finalAmount: number
   paymentMethod: string
+  paidAmount: number
+  change: number
+  notes: string | null
   createdAt: string
 }
 
 interface SaleDetail {
   id: string
   invoiceNumber: string
-  customerName: string | null
-  customerPhone: string | null
+  customer?: { name: string; phone: string } | null
   totalAmount: number
   discount: number
   finalAmount: number
@@ -88,7 +95,7 @@ function formatDate(dateStr: string): string {
   })
 }
 
-function getPaymentBadgeVariant(method: string) {
+function getPaymentBadgeClass(method: string) {
   switch (method) {
     case 'نقدی':
       return 'bg-emerald-100 text-emerald-800 border-emerald-200'
@@ -179,8 +186,10 @@ export default function SalesPage() {
       const res = await fetch(`/api/sales?${params}`)
       const json = await res.json()
       if (json.success) {
-        setSales(json.data.sales || [])
-        setTotal(json.data.total || 0)
+        // API returns { data: { sales: [...], pagination: { total, ... } } }
+        const salesData = json.data?.sales || []
+        setSales(salesData)
+        setTotal(json.data?.pagination?.total || 0)
       } else {
         toast.error('خطا در دریافت اطلاعات فروش')
       }
@@ -203,7 +212,30 @@ export default function SalesPage() {
       const res = await fetch(`/api/sales/${saleId}`)
       const json = await res.json()
       if (json.success) {
-        setSelectedSale(json.data)
+        // API returns the full sale object with nested customer and items (with product)
+        const sale = json.data
+        const detail: SaleDetail = {
+          id: sale.id,
+          invoiceNumber: sale.invoiceNumber,
+          customer: sale.customer ? { name: sale.customer.name, phone: sale.customer.phone } : null,
+          totalAmount: sale.totalAmount,
+          discount: sale.discount,
+          finalAmount: sale.finalAmount,
+          paymentMethod: sale.paymentMethod,
+          paidAmount: sale.paidAmount,
+          change: sale.change,
+          notes: sale.notes,
+          createdAt: sale.createdAt,
+          items: (sale.items || []).map((item: Record<string, unknown>) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: (item.product as Record<string, unknown>)?.name || 'نامشخص',
+            quantity: item.quantity as number,
+            unitPrice: item.unitPrice as number,
+            totalPrice: item.totalPrice as number,
+          })),
+        }
+        setSelectedSale(detail)
       } else {
         toast.error('خطا در دریافت جزئیات فروش')
         setDetailOpen(false)
@@ -298,6 +330,7 @@ export default function SalesPage() {
               <SalesTableSkeleton />
             ) : sales.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
+                <Receipt className="size-12 mx-auto mb-3 opacity-30" />
                 <p className="text-lg">هیچ فروشی یافت نشد</p>
                 <p className="text-sm mt-1">فیلترها را تغییر دهید</p>
               </div>
@@ -324,8 +357,8 @@ export default function SalesPage() {
                       onClick={() => viewSaleDetail(sale.id)}
                     >
                       <TableCell className="font-medium">{sale.invoiceNumber}</TableCell>
-                      <TableCell>{sale.customerName || '—'}</TableCell>
-                      <TableCell>{formatNumber(sale.itemsCount)}</TableCell>
+                      <TableCell>{sale.customer?.name || '—'}</TableCell>
+                      <TableCell>{formatNumber(sale.items?.length || 0)}</TableCell>
                       <TableCell>{formatNumber(sale.totalAmount)} افغانی</TableCell>
                       <TableCell className="text-destructive">
                         {sale.discount > 0 ? `${formatNumber(sale.discount)} افغانی` : '—'}
@@ -336,7 +369,7 @@ export default function SalesPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={getPaymentBadgeVariant(sale.paymentMethod)}
+                          className={getPaymentBadgeClass(sale.paymentMethod)}
                         >
                           {sale.paymentMethod}
                         </Badge>
@@ -420,10 +453,10 @@ export default function SalesPage() {
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">مشتری</p>
                     <p className="font-semibold">
-                      {selectedSale.customerName || 'بدون مشتری'}
-                      {selectedSale.customerPhone && (
+                      {selectedSale.customer?.name || 'بدون مشتری'}
+                      {selectedSale.customer?.phone && (
                         <span className="text-muted-foreground font-normal mr-2">
-                          ({selectedSale.customerPhone})
+                          ({selectedSale.customer.phone})
                         </span>
                       )}
                     </p>
@@ -432,7 +465,7 @@ export default function SalesPage() {
                     <p className="text-xs text-muted-foreground mb-1">روش پرداخت</p>
                     <Badge
                       variant="outline"
-                      className={getPaymentBadgeVariant(selectedSale.paymentMethod)}
+                      className={getPaymentBadgeClass(selectedSale.paymentMethod)}
                     >
                       {selectedSale.paymentMethod}
                     </Badge>
