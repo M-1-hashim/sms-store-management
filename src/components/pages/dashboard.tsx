@@ -721,8 +721,9 @@ export default function DashboardPage() {
                   <p className="text-xs">موجودی کافی</p>
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  {(data.lowStockProducts as LowStockProduct[]).slice(0, 5).map((product) => {
+                <ScrollArea className="max-h-72">
+                  <div className="space-y-2.5 pr-1">
+                  {(data.lowStockProducts as LowStockProduct[]).map((product) => {
                     const isOutOfStock = product.stock === 0
                     const isCritical = product.stock === 0 || product.stock <= Math.floor(product.minStock * 0.3)
                     const stockRatio = product.minStock > 0 ? Math.min((product.stock / product.minStock) * 100, 100) : 0
@@ -799,15 +800,8 @@ export default function DashboardPage() {
                       </div>
                     )
                   })}
-
-                  {data.lowStockCount > 5 && (
-                    <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/30 px-3 py-2 text-center">
-                      <p className="text-[11px] text-muted-foreground">
-                        و <span className="font-semibold text-foreground">{toFarsi(data.lowStockCount - 5)}</span> محصول دیگر در وضعیت هشدار
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
