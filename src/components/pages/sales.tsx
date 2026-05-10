@@ -32,7 +32,8 @@ import {
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Search, Eye, CalendarDays, Filter, Receipt, ChevronDown } from 'lucide-react'
+import { printInvoice } from '@/lib/print-invoice'
+import { Search, Eye, CalendarDays, Filter, Receipt, ChevronDown, Printer } from 'lucide-react'
 
 // --- Types ---
 interface SaleItem {
@@ -447,10 +448,44 @@ export default function SalesPage() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>جزئیات فاکتور</DialogTitle>
-            <DialogDescription>
-              {selectedSale?.invoiceNumber}
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>جزئیات فاکتور</DialogTitle>
+                <DialogDescription>
+                  {selectedSale?.invoiceNumber}
+                </DialogDescription>
+              </div>
+              {selectedSale && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    printInvoice({
+                      invoiceNumber: selectedSale.invoiceNumber,
+                      date: formatDate(selectedSale.createdAt),
+                      customer: selectedSale.customer,
+                      items: selectedSale.items.map(item => ({
+                        name: item.productName,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        totalPrice: item.totalPrice,
+                      })),
+                      totalAmount: selectedSale.totalAmount,
+                      discount: selectedSale.discount,
+                      finalAmount: selectedSale.finalAmount,
+                      paidAmount: selectedSale.paidAmount,
+                      change: selectedSale.change,
+                      paymentMethod: selectedSale.paymentMethod,
+                      notes: selectedSale.notes,
+                    })
+                  }}
+                >
+                  <Printer className="h-4 w-4" />
+                  چاپ فاکتور
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           {detailLoading ? (

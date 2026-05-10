@@ -13,6 +13,7 @@ import {
   ScanBarcode,
   Grid3X3,
   LayoutList,
+  Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -30,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 
 import { useCartStore, type CartItem } from '@/lib/store'
+import { printInvoice } from '@/lib/print-invoice'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -113,6 +115,7 @@ export default function POSPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [lastInvoiceNumber, setLastInvoiceNumber] = useState<string | null>(null)
 
   // ── Cart Store ────────────────────────────────────────────────────
   const {
@@ -240,9 +243,41 @@ export default function POSPage() {
       const json = await res.json()
 
       if (json.success) {
+        const invoiceNum = json.data.invoiceNumber
+        setLastInvoiceNumber(invoiceNum)
+        // Capture data before clearing cart
+        const cartItemsSnapshot = [...items]
+        const customerSnapshot = customers.find(c => c.id === customerId)
+        const totalSnapshot = total
+        const discountSnapshot = discount
+        const finalTotalSnapshot = finalTotal
+        const paymentMethodSnapshot = paymentMethod
+        
         toast.success('فاکتور با موفقیت ثبت شد', {
-          description: `شماره فاکتور: ${json.data.invoiceNumber}`,
-          duration: 4000,
+          description: `شماره فاکتور: ${invoiceNum}`,
+          duration: 5000,
+          action: {
+            label: 'چاپ فاکتور',
+            onClick: () => {
+              printInvoice({
+                invoiceNumber: invoiceNum,
+                date: new Date().toLocaleDateString('fa-AF', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                customer: customerSnapshot ? { name: customerSnapshot.name, phone: customerSnapshot.phone } : null,
+                items: cartItemsSnapshot.map(item => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  unitPrice: item.price,
+                  totalPrice: item.price * item.quantity,
+                })),
+                totalAmount: totalSnapshot,
+                discount: discountSnapshot,
+                finalAmount: finalTotalSnapshot,
+                paidAmount: finalTotalSnapshot,
+                change: 0,
+                paymentMethod: paymentMethodSnapshot,
+              })
+            },
+          },
         })
         clearCart()
         // Refresh products to update stock
@@ -701,6 +736,30 @@ export default function POSPage() {
                       </>
                     )}
                   </Button>
+                  {lastInvoiceNumber && items.length === 0 && (
+                    <Button
+                      variant="secondary"
+                      className="w-full gap-2 border border-dashed border-muted-foreground/30"
+                      onClick={() => {
+                        printInvoice({
+                          invoiceNumber: lastInvoiceNumber,
+                          date: new Date().toLocaleDateString('fa-AF', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                          customer: null,
+                          items: [],
+                          totalAmount: 0,
+                          discount: 0,
+                          finalAmount: 0,
+                          paidAmount: 0,
+                          change: 0,
+                          paymentMethod: '',
+                          notes: 'فاکتور قبلی — لطفاً از تاریخچه فروش مشاهده کنید',
+                        })
+                      }}
+                    >
+                      <Printer className="h-4 w-4" />
+                      چاپ آخرین فاکتور ({lastInvoiceNumber})
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     className="w-full gap-2"
