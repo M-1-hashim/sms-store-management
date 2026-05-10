@@ -334,8 +334,26 @@ export default function SettingsPage() {
     } catch { toast.error('خطا در ارتباط با سرور') }
   }
 
-  const handleDownloadBackup = (filename: string) => {
-    window.open(`/api/backup?action=download&file=${encodeURIComponent(filename)}`, '_blank')
+  const handleDownloadBackup = async (filename: string) => {
+    try {
+      const res = await apiFetch(`/api/backup?action=download&file=${encodeURIComponent(filename)}`)
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        toast.error(json?.error || 'خطا در دانلود')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('خطا در دانلود فایل پشتیبان')
+    }
   }
 
   // Security - Password change
