@@ -39,7 +39,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User,
-  Camera, Upload, X, Users,
+  Camera, Upload, X, Users, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -262,9 +262,11 @@ function CustomerAvatar({ customer, size = 'md' }: { customer: Customer | { name
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [showAll, setShowAll] = useState(false)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
@@ -272,16 +274,21 @@ export default function CustomersPage() {
   const [submitting, setSubmitting] = useState(false)
 
   // --- Data Fetching ---
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true)
+  const fetchCustomers = useCallback(async (pageNum: number, append = false) => {
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '20' })
+      const params = new URLSearchParams({ page: String(pageNum), limit: '20' })
       if (search) params.set('search', search)
 
       const res = await fetch(`/api/customers?${params}`)
       const json = await res.json()
       if (json.success) {
-        setCustomers(json.data?.customers || [])
+        const newCustomers = json.data?.customers || []
+        setCustomers(prev => append ? [...prev, ...newCustomers] : newCustomers)
         setTotal(json.data?.pagination?.total || 0)
       } else {
         toast.error('خطا در دریافت اطلاعات مشتریان')
@@ -290,12 +297,22 @@ export default function CustomersPage() {
       toast.error('خطا در اتصال به سرور')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }, [page, search])
+  }, [search])
 
   useEffect(() => {
-    fetchCustomers()
+    fetchCustomers(1)
+    setShowAll(false)
   }, [fetchCustomers])
+
+  const loadMore = () => {
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchCustomers(nextPage, true)
+  }
+
+
 
   // --- Dialog Handlers ---
   const openAddDialog = () => {
@@ -369,7 +386,8 @@ export default function CustomersPage() {
     }
   }
 
-  const totalPages = Math.ceil(total / 20)
+  const hasMore = customers.length < total
+  const remainingCount = total - customers.length
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -579,30 +597,35 @@ export default function CustomersPage() {
             )}
           </ScrollArea>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t mt-4">
-              <span className="text-sm text-muted-foreground">
-                صفحه {formatNumber(page)} از {formatNumber(totalPages)} — {formatNumber(total)} مشتری
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  قبلی
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  بعدی
-                </Button>
-              </div>
+          {/* Show More */}
+          {hasMore && (
+            <div className="border-t pt-3 mt-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                disabled={loadingMore}
+                onClick={loadMore}
+              >
+                {loadingMore ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3.5 w-3.5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                    در حال بارگذاری...
+                  </span>
+                ) : (
+                  <>
+                    <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                    نمایش بیشتر ({formatNumber(Math.min(remainingCount, 20))} مشتری دیگر)
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+          {!hasMore && customers.length > 20 && (
+            <div className="border-t pt-3 mt-3">
+              <p className="text-center text-xs text-muted-foreground">
+                نمایش همه {formatNumber(total)} مشتری
+              </p>
             </div>
           )}
         </CardContent>

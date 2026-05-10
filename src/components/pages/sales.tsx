@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Search, Eye, CalendarDays, Filter, Receipt } from 'lucide-react'
+import { Search, Eye, CalendarDays, Filter, Receipt, ChevronDown } from 'lucide-react'
 
 // --- Types ---
 interface SaleItem {
@@ -164,6 +164,7 @@ export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -174,10 +175,14 @@ export default function SalesPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
 
-  const fetchSales = useCallback(async () => {
-    setLoading(true)
+  const fetchSales = useCallback(async (pageNum: number, append = false) => {
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '20' })
+      const params = new URLSearchParams({ page: String(pageNum), limit: '20' })
       if (dateFrom) params.set('from', dateFrom)
       if (dateTo) params.set('to', dateTo)
       if (paymentMethod !== 'همه') params.set('payment', paymentMethod)
@@ -187,8 +192,8 @@ export default function SalesPage() {
       const json = await res.json()
       if (json.success) {
         // API returns { data: { sales: [...], pagination: { total, ... } } }
-        const salesData = json.data?.sales || []
-        setSales(salesData)
+        const newSales = json.data?.sales || []
+        setSales(prev => append ? [...prev, ...newSales] : newSales)
         setTotal(json.data?.pagination?.total || 0)
       } else {
         toast.error('خطا در دریافت اطلاعات فروش')
@@ -197,12 +202,19 @@ export default function SalesPage() {
       toast.error('خطا در اتصال به سرور')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }, [page, dateFrom, dateTo, paymentMethod, searchQuery])
+  }, [dateFrom, dateTo, paymentMethod, searchQuery])
 
   useEffect(() => {
-    fetchSales()
+    fetchSales(1)
   }, [fetchSales])
+
+  const loadMore = () => {
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchSales(nextPage, true)
+  }
 
   const viewSaleDetail = async (saleId: string) => {
     setDetailOpen(true)
@@ -248,7 +260,8 @@ export default function SalesPage() {
     }
   }
 
-  const totalPages = Math.ceil(total / 20)
+  const hasMore = sales.length < total
+  const remainingCount = total - sales.length
 
   return (
     <div className="space-y-6">
@@ -396,30 +409,35 @@ export default function SalesPage() {
             )}
           </ScrollArea>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t mt-4">
-              <span className="text-sm text-muted-foreground">
-                صفحه {formatNumber(page)} از {formatNumber(totalPages)}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  قبلی
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  بعدی
-                </Button>
-              </div>
+          {/* Show More */}
+          {hasMore && (
+            <div className="border-t pt-3 mt-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs text-muted-foreground hover:text-foreground"
+                disabled={loadingMore}
+                onClick={loadMore}
+              >
+                {loadingMore ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3.5 w-3.5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                    در حال بارگذاری...
+                  </span>
+                ) : (
+                  <>
+                    <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                    نمایش بیشتر ({formatNumber(Math.min(remainingCount, 20))} فروش دیگر)
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+          {!hasMore && sales.length > 20 && (
+            <div className="border-t pt-3 mt-3">
+              <p className="text-center text-xs text-muted-foreground">
+                نمایش همه {formatNumber(total)} فاکتور
+              </p>
             </div>
           )}
         </CardContent>
