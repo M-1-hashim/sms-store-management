@@ -636,7 +636,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-              <ScrollArea className={showAllRecentSales ? 'max-h-[500px]' : 'max-h-96'}>
+              <div className={showAllRecentSales ? 'overflow-y-auto max-h-[500px]' : 'overflow-y-auto max-h-96'}>
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -676,7 +676,7 @@ export default function DashboardPage() {
                     ))}
                   </TableBody>
                 </Table>
-                </ScrollArea>
+                </div>
                 {data.recentSales.length > 7 && (
                   <div className="border-t px-4 py-2">
                     <Button
@@ -815,7 +815,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <>
-                <ScrollArea className={showAllStockAlerts ? 'max-h-96' : 'max-h-72'}>
+                <div className={showAllStockAlerts ? 'overflow-y-auto max-h-96' : 'overflow-y-auto max-h-72'}>
                   <div className="space-y-2.5 pr-1">
                   {(data.lowStockProducts as LowStockProduct[]).slice(0, showAllStockAlerts ? undefined : 5).map((product) => {
                     const isOutOfStock = product.stock === 0
@@ -895,7 +895,7 @@ export default function DashboardPage() {
                     )
                   })}
                   </div>
-                </ScrollArea>
+                </div>
                 {(data.lowStockProducts as LowStockProduct[]).length > 5 && (
                   <Button
                     variant="ghost"

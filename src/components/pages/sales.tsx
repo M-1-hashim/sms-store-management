@@ -338,7 +338,7 @@ export default function SalesPage() {
       {/* Sales Table */}
       <Card>
         <CardContent className="pt-6">
-          <ScrollArea className="max-h-[520px]">
+          <div className="overflow-y-auto max-h-[520px]">
             {loading ? (
               <SalesTableSkeleton />
             ) : sales.length === 0 ? (
@@ -407,7 +407,7 @@ export default function SalesPage() {
                 </TableBody>
               </Table>
             )}
-          </ScrollArea>
+          </div>
 
           {/* Show More */}
           {hasMore && (

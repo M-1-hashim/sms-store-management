@@ -488,7 +488,7 @@ export default function CustomersPage() {
       {/* ═══ Customers Table ═══ */}
       <Card className="hover:shadow-md transition-shadow">
         <CardContent className="pt-6">
-          <ScrollArea className="max-h-[560px]">
+          <div className="overflow-y-auto max-h-[560px]">
             {loading ? (
               <CustomersTableSkeleton />
             ) : customers.length === 0 ? (
@@ -595,7 +595,7 @@ export default function CustomersPage() {
                 </TableBody>
               </Table>
             )}
-          </ScrollArea>
+          </div>
 
           {/* Show More */}
           {hasMore && (
