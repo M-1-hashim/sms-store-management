@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, email, address, balance } = body;
+    const { name, phone, email, address, balance, image } = body;
 
     const existing = await db.customer.findUnique({ where: { id } });
     if (!existing) {
@@ -37,6 +37,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(email !== undefined && { email: email || null }),
         ...(address !== undefined && { address: address || null }),
         ...(balance !== undefined && { balance: parseFloat(balance) }),
+        ...(image !== undefined && { image: image || null }),
       },
     });
 

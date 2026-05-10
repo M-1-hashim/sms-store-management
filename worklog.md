@@ -20,3 +20,35 @@ Stage Summary:
 - Fixed BigInt serialization issue that was causing 500 errors on dashboard API
 - Confirmed Customers, Sales History, and Reports pages all work correctly (APIs return correct data structures matching frontend expectations)
 - Dev server running, all endpoints returning 200
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add customer image upload + improve frontend dashboard
+
+Work Log:
+- Added `image` column (String?) to Customer model in `prisma/schema.prisma`
+- Ran `db:push` to sync schema — new column available immediately
+- Updated `/api/customers` POST handler to accept `image` field
+- Updated `/api/customers/[id]` PUT handler to accept `image` field
+- Completely redesigned `src/components/pages/customers.tsx`:
+  - Added `ImageUploadZone` component with drag-and-drop + click-to-upload
+  - Added image compression (resizes to 200px, JPEG 70% quality) for efficient storage
+  - Added `CustomerAvatar` component showing uploaded image or colored initials
+  - Added stats bar (total customers, with image, in debt, with email)
+  - Added image column to table with avatars
+  - Updated dialog form with image upload zone
+- Updated `src/components/pages/dashboard.tsx`:
+  - `UserAvatar` now accepts `image` prop and shows uploaded photo
+  - Hero card avatar stack shows customer photos
+  - Recent sales table shows customer photos
+- Updated `src/components/pages/pos.tsx`:
+  - Customer selector now shows avatar preview next to dropdown
+  - Added `cn` import and `image` to Customer type
+- All lint checks pass clean
+
+Stage Summary:
+- Customer image upload fully functional: drag-drop, click, compress, store as base64
+- Images display across Dashboard (hero card, recent sales table), Customers page (table, dialog), and POS (customer selector)
+- Database schema updated with `image` column on Customer model
+- All API routes handle image create/update correctly

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, phone, email, address, balance } = body;
+    const { name, phone, email, address, balance, image } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         email: email || null,
         address: address || null,
         balance: balance ?? 0,
+        image: image || null,
       },
     });
 

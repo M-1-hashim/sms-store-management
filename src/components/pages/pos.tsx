@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 
 import { useCartStore, type CartItem } from '@/lib/store'
+import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ interface Customer {
   id: string
   name: string
   phone: string
+  image?: string | null
 }
 
 interface Category {
@@ -594,18 +596,35 @@ export default function POSPage() {
                 {/* Customer Selector */}
                 <div className="space-y-1.5">
                   <Label className="text-sm text-muted-foreground">مشتری (اختیاری)</Label>
-                  <select
-                    value={customerId || ''}
-                    onChange={(e) => setCustomerId(e.target.value || null)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="">بدون مشتری</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} — {c.phone}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    {customerId && (() => {
+                      const sel = customers.find(c => c.id === customerId)
+                      if (sel) {
+                        const colors = ['bg-rose-500','bg-emerald-500','bg-amber-500','bg-violet-500','bg-cyan-500']
+                        const colorIdx = sel.name.charCodeAt(0) % colors.length
+                        return sel.image ? (
+                          <img src={sel.image} alt={sel.name} className="h-7 w-7 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white text-[10px] font-bold', colors[colorIdx])}>
+                            {sel.name.slice(0, 2)}
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+                    <select
+                      value={customerId || ''}
+                      onChange={(e) => setCustomerId(e.target.value || null)}
+                      className="flex h-9 flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">بدون مشتری</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} — {c.phone}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 {/* Payment Method */}

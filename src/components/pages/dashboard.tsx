@@ -49,7 +49,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ interface RecentSale {
   finalAmount: number
   paymentMethod: string
   createdAt: string
-  customer: { id: string; name: string; phone: string } | null
+  customer: { id: string; name: string; phone: string; image?: string | null } | null
 }
 
 interface TopProduct {
@@ -214,7 +214,7 @@ function MiniCardSkeleton() {
 
 // ─── Avatar Component ────────────────────────────────────────────────
 
-function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
+function UserAvatar({ name, image, size = 'sm' }: { name: string; image?: string | null; size?: 'sm' | 'md' | 'lg' }) {
   const colors = [
     'bg-rose-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500',
     'bg-cyan-500', 'bg-pink-500', 'bg-teal-500', 'bg-orange-500',
@@ -222,8 +222,19 @@ function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' | 
   const colorIndex = name.charCodeAt(0) % colors.length
   const sizeClass = size === 'sm' ? 'h-7 w-7 text-xs' : size === 'md' ? 'h-9 w-9 text-sm' : 'h-12 w-12 text-base'
 
+  if (image) {
+    return (
+      <Avatar className={cn(sizeClass, 'rounded-xl')}>
+        <AvatarImage src={image} alt={name} className="object-cover" />
+        <AvatarFallback className={cn('rounded-xl', colors[colorIndex], 'text-white font-bold')}>
+          {name.slice(0, 2)}
+        </AvatarFallback>
+      </Avatar>
+    )
+  }
+
   return (
-    <Avatar className={cn(sizeClass, colors[colorIndex])}>
+    <Avatar className={cn(sizeClass, 'rounded-xl', colors[colorIndex])}>
       <AvatarFallback className="text-white font-bold">
         {name.slice(0, 2)}
       </AvatarFallback>
@@ -374,6 +385,7 @@ export default function DashboardPage() {
                   <UserAvatar
                     key={sale.id}
                     name={sale.customer?.name || 'ف'}
+                    image={sale.customer?.image}
                     size="md"
                   />
                 ))}
@@ -636,7 +648,7 @@ export default function DashboardPage() {
                         <TableCell className="font-mono text-xs">{sale.invoiceNumber}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <UserAvatar name={sale.customer?.name || '—'} size="sm" />
+                            <UserAvatar name={sale.customer?.name || '—'} image={sale.customer?.image} size="sm" />
                             <span className="text-xs">{sale.customer?.name || 'بدون مشتری'}</span>
                           </div>
                         </TableCell>
