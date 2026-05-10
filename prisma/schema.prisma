@@ -111,6 +111,10 @@ model Settings {
   invoiceFooter String @default("با تشکر از خرید شما")
   currency    String   @default("افغانی")
   itemsPerPage Int     @default(20)
+  autoBackup   Boolean @default(false)
+  backupFrequency String @default("daily")
+  backupKeepCount Int  @default(10)
+  lastAutoBackup DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

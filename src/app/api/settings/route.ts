@@ -41,6 +41,9 @@ export async function PUT(request: Request) {
       invoiceFooter,
       currency,
       itemsPerPage,
+      autoBackup,
+      backupFrequency,
+      backupKeepCount,
     } = body
 
     // Ensure settings record exists
@@ -49,7 +52,6 @@ export async function PUT(request: Request) {
     })
 
     if (!existing) {
-      // Create if not exists
       const settings = await db.settings.create({
         data: {
           id: 'main',
@@ -64,6 +66,9 @@ export async function PUT(request: Request) {
           invoiceFooter: invoiceFooter || 'با تشکر از خرید شما',
           currency: currency || 'افغانی',
           itemsPerPage: itemsPerPage || 20,
+          autoBackup: autoBackup ?? false,
+          backupFrequency: backupFrequency || 'daily',
+          backupKeepCount: backupKeepCount || 10,
         },
       })
       return NextResponse.json({ success: true, data: settings })
@@ -84,6 +89,9 @@ export async function PUT(request: Request) {
         ...(invoiceFooter !== undefined && { invoiceFooter }),
         ...(currency !== undefined && { currency }),
         ...(itemsPerPage !== undefined && { itemsPerPage }),
+        ...(autoBackup !== undefined && { autoBackup }),
+        ...(backupFrequency !== undefined && { backupFrequency }),
+        ...(backupKeepCount !== undefined && { backupKeepCount }),
       },
     })
 

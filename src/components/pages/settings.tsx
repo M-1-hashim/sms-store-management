@@ -53,8 +53,12 @@ import {
   Sun,
   Moon,
   Monitor,
+  Clock,
+  HardDriveUpload,
+  Zap,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { Switch } from '@/components/ui/switch'
 
 // --- Types ---
 interface SettingsData {
@@ -70,12 +74,17 @@ interface SettingsData {
   invoiceFooter: string
   currency: string
   itemsPerPage: number
+  autoBackup: boolean
+  backupFrequency: string
+  backupKeepCount: number
+  lastAutoBackup: string | null
 }
 
 interface BackupFile {
   filename: string
   size: string
   date: string
+  type: 'auto' | 'manual'
 }
 
 type FormDataType = {
@@ -90,6 +99,9 @@ type FormDataType = {
   invoiceFooter: string
   currency: string
   itemsPerPage: number
+  autoBackup: boolean
+  backupFrequency: string
+  backupKeepCount: number
 }
 
 // --- Skeleton ---
@@ -145,6 +157,9 @@ export default function SettingsPage() {
     invoiceFooter: '',
     currency: 'افغانی',
     itemsPerPage: 20,
+    autoBackup: false,
+    backupFrequency: 'daily',
+    backupKeepCount: 10,
   })
 
   const originalData = useRef<FormDataType>(formData)
@@ -170,6 +185,9 @@ export default function SettingsPage() {
             invoiceFooter: s.invoiceFooter,
             currency: s.currency,
             itemsPerPage: s.itemsPerPage,
+            autoBackup: s.autoBackup,
+            backupFrequency: s.backupFrequency,
+            backupKeepCount: s.backupKeepCount,
           }
           setFormData(fd)
           originalData.current = fd
@@ -197,7 +215,10 @@ export default function SettingsPage() {
       formData.invoicePrefix !== c.invoicePrefix ||
       formData.invoiceFooter !== c.invoiceFooter ||
       formData.currency !== c.currency ||
-      formData.itemsPerPage !== c.itemsPerPage
+      formData.itemsPerPage !== c.itemsPerPage ||
+      formData.autoBackup !== c.autoBackup ||
+      formData.backupFrequency !== c.backupFrequency ||
+      formData.backupKeepCount !== c.backupKeepCount
     setHasChanges(changed)
   }, [formData])
 
@@ -309,6 +330,47 @@ export default function SettingsPage() {
 
   const handleDownloadBackup = (filename: string) => {
     window.open(`/api/backup?action=download&file=${encodeURIComponent(filename)}`, '_blank')
+  }
+
+  const [uploading, setUploading] = useState(false)
+  const uploadRef = useRef<HTMLInputElement>(null)
+
+  const handleUploadBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.db') && !file.name.endsWith('.sqlite') && !file.name.endsWith('.sqlite3')) {
+      toast.error('لطفاً فقط فایل دیتابیس (.db, .sqlite) انتخاب کنید')
+      if (uploadRef.current) uploadRef.current.value = ''
+      return
+    }
+
+    try {
+      setUploading(true)
+      const form = new FormData()
+      form.append('file', file)
+
+      const res = await fetch('/api/backup', {
+        method: 'POST',
+        body: form,
+      })
+      const json = await res.json()
+
+      if (json.success) {
+        toast.success(json.message, {
+          description: 'صفحه به زودی رفرش می‌شود...',
+          duration: 3000,
+        })
+        setTimeout(() => window.location.reload(), 2500)
+      } else {
+        toast.error(json.error || 'خطا در آپلود فایل')
+      }
+    } catch {
+      toast.error('خطا در آپلود فایل')
+    } finally {
+      setUploading(false)
+      if (uploadRef.current) uploadRef.current.value = ''
+    }
   }
 
   useEffect(() => { if (activeTab === 'backup') fetchBackups() }, [activeTab, fetchBackups])
@@ -652,25 +714,129 @@ export default function SettingsPage() {
       {/* ==================== BACKUP TAB ==================== */}
       {activeTab === 'backup' && (
         <div className="space-y-6">
+          {/* Auto Backup Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-amber-500" />
+                پشتیبان‌گیری خودکار
+              </CardTitle>
+              <CardDescription>سیستم به صورت خودکار از دیتابیس شما پشتیبان می‌گیرد.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Enable Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">فعال‌سازی پشتیبان خودکار</Label>
+                  <p className="text-xs text-muted-foreground">پشتیبان‌گیری در فواصل منظم انجام می‌شود</p>
+                </div>
+                <Switch
+                  checked={formData.autoBackup}
+                  onCheckedChange={(checked) => setFormData((p) => ({ ...p, autoBackup: checked }))}
+                />
+              </div>
+
+              {formData.autoBackup && (
+                <>
+                  <Separator />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Frequency */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        فاصله پشتیبان‌گیری
+                      </Label>
+                      <Select
+                        value={formData.backupFrequency}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, backupFrequency: v }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hourly">هر ساعت</SelectItem>
+                          <SelectItem value="daily">هر روز</SelectItem>
+                          <SelectItem value="weekly">هر هفته</SelectItem>
+                          <SelectItem value="monthly">هر ماه</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Keep Count */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm">
+                        <Database className="h-4 w-4 text-muted-foreground" />
+                        تعداد پشتیبان نگهداری
+                      </Label>
+                      <Select
+                        value={String(formData.backupKeepCount)}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, backupKeepCount: parseInt(v, 10) }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">۵ نسخه</SelectItem>
+                          <SelectItem value="10">۱۰ نسخه</SelectItem>
+                          <SelectItem value="20">۲۰ نسخه</SelectItem>
+                          <SelectItem value="50">۵۰ نسخه</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {settings?.lastAutoBackup && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      آخرین پشتیبان خودکار:{' '}
+                      {new Date(settings.lastAutoBackup).toLocaleDateString('fa-AF', {
+                        year: 'numeric', month: 'long', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Manual Backup + Upload */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5 text-rose-500" />
-                پشتیبان‌گیری و بازیابی
+                پشتیبان‌گیری دستی و آپلود
               </CardTitle>
-              <CardDescription>از اطلاعات فروشگاه خود پشتیبان بگیرید و در صورت نیاز آن را بازیابی کنید.</CardDescription>
+              <CardDescription>به صورت دستی پشتیبان بگیرید یا فایل پشتیبان را آپلود کنید.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Button onClick={handleCreateBackup} disabled={creatingBackup} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                   {creatingBackup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {creatingBackup ? 'در حال ایجاد...' : 'ایجاد پشتیبان جدید'}
                 </Button>
-                <p className="text-sm text-muted-foreground self-center">از تمام دیتابیس یک نسخه پشتیبان ایجاد کنید</p>
+
+                <Button
+                  variant="outline"
+                  onClick={() => uploadRef.current?.click()}
+                  disabled={uploading}
+                  className="gap-2"
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <HardDriveUpload className="h-4 w-4" />}
+                  {uploading ? 'در حال آپلود...' : 'آپلود فایل پشتیبان'}
+                </Button>
+                <input
+                  ref={uploadRef}
+                  type="file"
+                  accept=".db,.sqlite,.sqlite3"
+                  onChange={handleUploadBackup}
+                  className="hidden"
+                />
               </div>
+              <p className="text-xs text-muted-foreground">
+                فایل‌های قابل قبول: .db, .sqlite, .sqlite3 — حداکثر ۱۰۰ مگابایت
+              </p>
             </CardContent>
           </Card>
 
+          {/* Backup List */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">نسخه‌های پشتیبان</CardTitle>
@@ -701,7 +867,19 @@ export default function SettingsPage() {
                           <Database className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium" dir="ltr">{backup.filename}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium" dir="ltr">{backup.filename}</p>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0 ${
+                                backup.type === 'auto'
+                                  ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800'
+                                  : 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800'
+                              }`}
+                            >
+                              {backup.type === 'auto' ? 'خودکار' : 'دستی'}
+                            </Badge>
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {new Date(backup.date).toLocaleDateString('fa-AF', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {backup.size}
                           </p>
