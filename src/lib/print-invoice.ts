@@ -1,6 +1,8 @@
 // ─── Invoice Print Utility ────────────────────────────────────────────
 // Opens a beautiful RTL invoice in a new window for printing
 
+import { apiFetch } from '@/lib/auth-store'
+
 export interface StoreSettings {
   storeName: string
   storeNameEn: string
@@ -58,7 +60,7 @@ export async function printInvoice(data: InvoiceData) {
   }
 
   try {
-    const res = await fetch('/api/settings')
+    const res = await apiFetch('/api/settings')
     const json = await res.json()
     if (json.success && json.data) {
       settings = json.data
