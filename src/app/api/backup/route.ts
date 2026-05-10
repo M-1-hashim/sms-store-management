@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { readFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync } from 'fs'
-import { join, dirname, resolve } from 'path'
+import { join, dirname } from 'path'
 import { writeFile, readFile } from 'fs/promises'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/validate-auth'
@@ -66,10 +66,10 @@ export async function GET(request: Request) {
   // Download a specific backup
   if (action === 'download' && filename) {
     try {
-      const safePath = resolve(backupDir, filename)
-      if (!safePath.startsWith(backupDir)) {
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
         return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
       }
+      const safePath = join(backupDir, filename)
       if (!existsSync(safePath)) {
         return NextResponse.json({ success: false, error: 'فایل پشتیبان یافت نشد' }, { status: 404 })
       }
@@ -89,10 +89,10 @@ export async function GET(request: Request) {
   // Delete a backup
   if (action === 'delete' && filename) {
     try {
-      const safePath = resolve(backupDir, filename)
-      if (!safePath.startsWith(backupDir)) {
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
         return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
       }
+      const safePath = join(backupDir, filename)
       if (existsSync(safePath)) unlinkSync(safePath)
       return NextResponse.json({ success: true, message: 'پشتیبان حذف شد' })
     } catch (error) {
@@ -300,10 +300,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'نام فایل مشخص نشده' }, { status: 400 })
       }
 
-      const restorePath = resolve(backupDir, filename)
-      if (!restorePath.startsWith(backupDir)) {
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
         return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
       }
+      const restorePath = join(backupDir, filename)
       if (!existsSync(restorePath)) {
         return NextResponse.json({ success: false, error: 'فایل پشتیبان یافت نشد' }, { status: 404 })
       }
