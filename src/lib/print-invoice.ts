@@ -43,31 +43,9 @@ function sanitizeHtml(str: string): string {
     .replace(/'/g, '&#039;')
 }
 
-export async function printInvoice(data: InvoiceData) {
+function buildInvoiceHtml(data: InvoiceData, settings: StoreSettings): string {
   const toFarsi = (n: number) => n.toLocaleString('fa-AF')
 
-  // Fetch store settings
-  let settings: StoreSettings = {
-    storeName: 'فروشگاه من',
-    storeNameEn: 'My Store',
-    address: '',
-    phone: '',
-    email: '',
-    logo: null,
-    taxNumber: '',
-    invoiceFooter: 'با تشکر از خرید شما',
-    currency: 'افغانی',
-  }
-
-  try {
-    const res = await apiFetch('/api/settings')
-    const json = await res.json()
-    if (json.success && json.data) {
-      settings = json.data
-    }
-  } catch {
-    // Use defaults if settings fetch fails
-  }
   const itemsRows = data.items
     .map(
       (item, i) => `
@@ -90,7 +68,7 @@ export async function printInvoice(data: InvoiceData) {
       ? '#d97706'
       : '#2563eb'
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -300,6 +278,28 @@ export async function printInvoice(data: InvoiceData) {
       font-weight: 600;
       margin-bottom: 4px;
     }
+    /* Loading */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 16px;
+      font-family: 'Vazirmatn', system-ui, sans-serif;
+      color: #94a3b8;
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top: 3px solid #0f172a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
     /* Print Button */
     .print-btn {
       position: fixed;
@@ -451,10 +451,105 @@ export async function printInvoice(data: InvoiceData) {
   <div class="watermark no-print">SMS — Store Management System</div>
 </body>
 </html>`
+}
 
-  const printWindow = window.open('', '_blank', 'width=850,height=900')
-  if (printWindow) {
-    printWindow.document.write(html)
-    printWindow.document.close()
+function buildLoadingHtml(invoiceNumber: string): string {
+  return `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>فاکتور ${sanitizeHtml(invoiceNumber)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Vazirmatn', system-ui, sans-serif; }
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 16px;
+      color: #94a3b8;
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top: 3px solid #0f172a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      font-size: 15px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-container">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">در حال آماده‌سازی فاکتور...</div>
+  </div>
+</body>
+</html>`
+}
+
+export function printInvoice(data: InvoiceData) {
+  const toFarsi = (n: number) => n.toLocaleString('fa-AF')
+
+  // Default settings (used if fetch fails)
+  const defaultSettings: StoreSettings = {
+    storeName: 'فروشگاه من',
+    storeNameEn: 'My Store',
+    address: '',
+    phone: '',
+    email: '',
+    logo: null,
+    taxNumber: '',
+    invoiceFooter: 'با تشکر از خرید شما',
+    currency: 'افغانی',
   }
+
+  // CRITICAL: Open the window IMMEDIATELY (synchronously) while still in
+  // the user-click context. If we await first, the browser's popup blocker
+  // will block window.open() because it's no longer a direct user gesture.
+  const printWindow = window.open('', '_blank', 'width=850,height=900')
+
+  if (!printWindow) {
+    // Popup was blocked — nothing we can do except inform the user
+    const fallback = window.open('', '_blank')
+    if (fallback) {
+      fallback.document.write(buildLoadingHtml(data.invoiceNumber))
+      fallback.document.close()
+    }
+    return
+  }
+
+  // Show a loading state immediately
+  printWindow.document.write(buildLoadingHtml(data.invoiceNumber))
+  printWindow.document.close()
+
+  // Now fetch settings asynchronously and update the window
+  apiFetch('/api/settings')
+    .then((res) => res.json())
+    .then((json) => {
+      const settings: StoreSettings = json.success && json.data
+        ? { ...defaultSettings, ...json.data }
+        : defaultSettings
+
+      const html = buildInvoiceHtml(data, settings)
+      printWindow.document.open()
+      printWindow.document.write(html)
+      printWindow.document.close()
+    })
+    .catch(() => {
+      // If settings fetch fails, render with default settings
+      const html = buildInvoiceHtml(data, defaultSettings)
+      printWindow.document.open()
+      printWindow.document.write(html)
+      printWindow.document.close()
+    })
 }
