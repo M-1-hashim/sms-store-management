@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { readFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync, resolve } from 'fs'
-import { join, dirname } from 'path'
+import { readFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync } from 'fs'
+import { join, dirname, resolve } from 'path'
 import { writeFile, readFile } from 'fs/promises'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/validate-auth'
