@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron')
-const { spawn, execSync } = require('child_process')
+const { spawn } = require('child_process')
 const path = require('path')
 
 let mainWindow
@@ -21,19 +21,19 @@ function createWindow() {
     },
   })
 
-  // Remove menu bar for cleaner look
+  // Remove menu bar
   mainWindow.setMenuBarVisibility(false)
 
   // Show loading screen
   mainWindow.loadFile(path.join(__dirname, 'loading.html'))
 
   if (isDev) {
-    // Development: connect to running Next.js dev server (run `bun run dev` first)
+    // Dev: connect to running Next.js dev server (run `bun run dev` first)
     const checkReady = setInterval(() => {
       mainWindow.loadURL('http://localhost:3000').then(() => {
         clearInterval(checkReady)
       }).catch(() => {
-        // Server not ready yet, keep trying
+        // Server not ready yet
       })
     }, 1000)
   } else {
@@ -81,7 +81,7 @@ app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
   if (nextProcess) {
-    nextProcess.kill('SIGTERM')
+    nextProcess.kill()
     nextProcess = null
   }
   if (process.platform !== 'darwin') app.quit()
@@ -89,7 +89,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   if (nextProcess) {
-    nextProcess.kill('SIGTERM')
+    nextProcess.kill()
     nextProcess = null
   }
 })
