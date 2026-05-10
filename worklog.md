@@ -80,3 +80,40 @@ Stage Summary:
 - Stock Alert card completely redesigned with severity levels, progress bars, and better UX
 - Prisma client regenerated — customer image field now fully functional across all APIs
 - Both issues resolved: dashboard stock card improved, customer image upload confirmed working
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Redesign گزارش‌ها (Reports) page with modern UI
+
+Work Log:
+- Completely rewrote `src/components/pages/reports.tsx` (770 → 850+ lines)
+- Added `dir="rtl"` for proper Farsi RTL support
+- Created reusable `DateFilterCard` component with gradient styling and filter icon
+- Created custom chart tooltips for Recharts (`ChartTooltip`, `PieTooltip`)
+- Created comprehensive skeleton components: `HeroSkeleton`, `MiniCardSkeleton`, `TableSkeleton`, `ChartSkeleton`
+- **Sales Report Tab** redesigned:
+  - Hero revenue card with gradient background, sale count badge, best day indicator
+  - 4 mini stat cards: total sales, average sale, discounts, active days
+  - Daily sales bar chart (last 20 days) with gradient fill using Recharts
+  - Payment method donut/pie chart with legend and percentages
+  - Daily sales table with row numbers
+- **Inventory Report Tab** redesigned:
+  - Hero inventory value card with gradient, product count badge, potential profit display
+  - 4 mini stat cards: products, total stock, cost value, low stock alerts
+  - Category inventory bar chart with per-bar colors
+  - Products table sorted by value with stock badges
+- **Profit Report Tab** redesigned:
+  - Hero net profit card with green/red color based on profitability, margin badge
+  - 4 mini stat cards: revenue, COGS, operating expenses, gross profit
+  - Profit waterfall/breakdown card with progress bars for COGS and expenses
+  - Expense category pie chart + category list with progress bars
+- Added icon-based tabs (TrendingUp, Package, Calculator)
+- Modern header with rose icon and description
+- All lint checks pass clean
+
+Stage Summary:
+- Reports page fully redesigned with modern analytics UI matching dashboard style
+- Added 3 Recharts visualizations: daily sales bar chart, payment pie chart, expense pie chart
+- Consistent design language: gradient hero cards, mini stat cards, hover effects, progress bars
+- Proper RTL support throughout the page
