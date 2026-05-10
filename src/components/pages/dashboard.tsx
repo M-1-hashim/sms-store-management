@@ -5,22 +5,30 @@ import { format, parseISO } from 'date-fns'
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  Area,
+  AreaChart,
 } from 'recharts'
 import {
   TrendingUp,
+  TrendingDown,
   Package,
   AlertTriangle,
   DollarSign,
   ShoppingCart,
   Users,
-  ArrowDownLeft,
   ArrowUpRight,
+  ArrowDownRight,
+  Trophy,
+  Flame,
+  Wallet,
+  BarChart3,
+  Star,
 } from 'lucide-react'
 
 import {
@@ -40,8 +48,9 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -49,14 +58,18 @@ interface DashboardData {
   salesToday: { count: number; revenue: number }
   salesWeek: { count: number; revenue: number }
   salesMonth: { count: number; revenue: number }
+  prevMonth: { count: number; revenue: number }
+  growthPercent: number
   totalRevenue: number
   totalProducts: number
+  totalCustomers: number
   lowStockCount: number
   lowStockProducts: Array<Record<string, unknown>>
   recentSales: RecentSale[]
   topSellingProducts: TopProduct[]
   chartData: ChartDataPoint[]
   totalExpensesThisMonth: number
+  categoryRevenue: CategoryRevenue[]
 }
 
 interface RecentSale {
@@ -91,23 +104,37 @@ interface LowStockProduct {
   minStock: number
 }
 
+interface CategoryRevenue {
+  categoryId: string
+  categoryName: string
+  categoryColor: string
+  totalRevenue: number
+  totalSales: number
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────
 
 function toFarsi(num: number): string {
   return num.toLocaleString('fa-AF')
 }
 
+function toCompactFarsi(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
+  if (num >= 1000) return `${(num / 1000).toFixed(0)}K`
+  return toFarsi(num)
+}
+
 function getPaymentBadge(method: string) {
   switch (method) {
     case 'نقدی':
-      return <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">{method}</Badge>
+      return <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-xs">{method}</Badge>
     case 'کارت':
     case 'کارت بانکی':
-      return <Badge className="bg-blue-600 hover:bg-blue-700 text-white">{method}</Badge>
+      return <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-xs">{method}</Badge>
     case 'نسیه':
-      return <Badge variant="outline" className="border-amber-500 text-amber-700">{method}</Badge>
+      return <Badge variant="outline" className="border-amber-500 text-amber-700 text-xs">{method}</Badge>
     default:
-      return <Badge variant="secondary">{method}</Badge>
+      return <Badge variant="secondary" className="text-xs">{method}</Badge>
   }
 }
 
@@ -131,32 +158,76 @@ interface CustomTooltipProps {
 function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-lg border bg-background p-3 shadow-lg" dir="rtl">
-      <p className="mb-2 text-sm font-medium text-foreground">{label}</p>
+    <div className="rounded-xl border bg-white p-3 shadow-xl" dir="rtl">
+      <p className="mb-2 text-sm font-semibold text-gray-800">{label}</p>
       {payload.map((entry, index) => (
         <p key={index} className="text-sm" style={{ color: entry.color }}>
-          {entry.name}: {toFarsi(entry.value)} {entry.name === 'فروش' ? 'عدد' : 'افغانی'}
+          {entry.name}: {toFarsi(entry.value)} افغانی
         </p>
       ))}
     </div>
   )
 }
 
-// ─── Stat Card Skeleton ───────────────────────────────────────────────
-
-function StatCardSkeleton() {
+function AreaChartTooltip({ active, payload, label }: CustomTooltipProps) {
+  if (!active || !payload?.length) return null
   return (
-    <Card>
+    <div className="rounded-xl border bg-white p-3 shadow-xl" dir="rtl">
+      <p className="mb-2 text-sm font-semibold text-gray-800">{label}</p>
+      {payload.map((entry, index) => (
+        <p key={index} className="text-sm" style={{ color: entry.color }}>
+          {entry.name === 'درآمد' ? `درآمد: ${toFarsi(entry.value)} افغانی` : `فروش: ${toFarsi(entry.value)} عدد`}
+        </p>
+      ))}
+    </div>
+  )
+}
+
+// ─── Skeleton Components ─────────────────────────────────────────────
+
+function HeroCardSkeleton() {
+  return (
+    <Card className="overflow-hidden">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-32" />
-          </div>
-          <Skeleton className="h-12 w-12 rounded-xl" />
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-4 w-64" />
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function MiniCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-7 w-32" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Avatar Component ────────────────────────────────────────────────
+
+function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
+  const colors = [
+    'bg-rose-500', 'bg-emerald-500', 'bg-amber-500', 'bg-violet-500',
+    'bg-cyan-500', 'bg-pink-500', 'bg-teal-500', 'bg-orange-500',
+  ]
+  const colorIndex = name.charCodeAt(0) % colors.length
+  const sizeClass = size === 'sm' ? 'h-7 w-7 text-xs' : size === 'md' ? 'h-9 w-9 text-sm' : 'h-12 w-12 text-base'
+
+  return (
+    <Avatar className={cn(sizeClass, colors[colorIndex])}>
+      <AvatarFallback className="text-white font-bold">
+        {name.slice(0, 2)}
+      </AvatarFallback>
+    </Avatar>
   )
 }
 
@@ -171,14 +242,14 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/dashboard?period=7')
+      const res = await fetch('/api/dashboard?period=30')
       const json = await res.json()
       if (json.success) {
         setData(json.data)
       } else {
         setError(json.error || 'خطا در دریافت اطلاعات')
       }
-    } catch (err) {
+    } catch {
       setError('خطا در ارتباط با سرور')
     } finally {
       setLoading(false)
@@ -193,40 +264,25 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6" dir="rtl">
-        <div>
-          <Skeleton className="mb-1 h-8 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <HeroCardSkeleton />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
+            <MiniCardSkeleton key={i} />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-40" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-72 w-full" />
-            </CardContent>
+            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
+            <CardContent><Skeleton className="h-72 w-full" /></CardContent>
           </Card>
           <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-40" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-72 w-full" />
-            </CardContent>
+            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
+            <CardContent><Skeleton className="h-72 w-full" /></CardContent>
           </Card>
         </div>
         <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-48" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-64 w-full" />
-          </CardContent>
+          <CardHeader><Skeleton className="h-5 w-48" /></CardHeader>
+          <CardContent><Skeleton className="h-64 w-full" /></CardContent>
         </Card>
       </div>
     )
@@ -238,9 +294,6 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-20" dir="rtl">
         <AlertTriangle className="h-16 w-16 text-destructive" />
         <h2 className="text-xl font-semibold">{error || 'اطلاعات در دسترس نیست'}</h2>
-        <p className="text-muted-foreground">
-          لطفاً اتصال اینترنت خود را بررسی کنید و دوباره تلاش کنید.
-        </p>
         <button
           onClick={fetchDashboard}
           className="mt-2 rounded-lg bg-primary px-6 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
@@ -251,256 +304,353 @@ export default function DashboardPage() {
     )
   }
 
-  const stats = [
-    {
-      label: 'کل فروش امروز',
-      value: `${toFarsi(data.salesToday.revenue)} افغانی`,
-      sub: `${toFarsi(data.salesToday.count)} فاکتور`,
-      icon: TrendingUp,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-      trend: 'up' as const,
-    },
-    {
-      label: 'تعداد محصولات',
-      value: toFarsi(data.totalProducts),
-      sub: 'محصول فعال',
-      icon: Package,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50 dark:bg-blue-950/40',
-      trend: 'neutral' as const,
-    },
-    {
-      label: 'موجودی کم',
-      value: toFarsi(data.lowStockCount),
-      sub: 'محصول نیاز به سفارش',
-      icon: AlertTriangle,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50 dark:bg-amber-950/40',
-      trend: 'down' as const,
-    },
-    {
-      label: 'درآمد ماهانه',
-      value: `${toFarsi(data.salesMonth.revenue)} افغانی`,
-      sub: `${toFarsi(data.salesMonth.count)} فاکتور`,
-      icon: DollarSign,
-      color: 'text-violet-600',
-      bg: 'bg-violet-50 dark:bg-violet-950/40',
-      trend: 'up' as const,
-    },
+  const isGrowthPositive = data.growthPercent >= 0
+
+  // Category chart colors - warm, modern palette
+  const categoryColors = [
+    '#e11d48', // rose-600
+    '#0891b2', // cyan-600
+    '#7c3aed', // violet-600
+    '#ea580c', // orange-600
+    '#059669', // emerald-600
+    '#d97706', // amber-600
+    '#2563eb', // blue-600
+    '#dc2626', // red-600
+    '#4f46e5', // indigo-600
   ]
+
+  const categoryChartData = (data.categoryRevenue || []).slice(0, 6).map((cat, i) => ({
+    name: cat.categoryName,
+    revenue: cat.totalRevenue,
+    sales: cat.totalSales,
+    fill: categoryColors[i % categoryColors.length],
+  }))
+
+  // Area chart data
+  const areaChartData = data.chartData.map((d) => ({
+    ...d,
+    revenueFormatted: d.revenue,
+  }))
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">داشبورد</h1>
-        <p className="text-muted-foreground">
-          خلاصه‌ای از فعالیت‌ها و آمار فروشگاه شما
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Card key={stat.label} className="transition-shadow hover:shadow-md">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {stat.trend === 'up' && <ArrowUpRight className="h-3 w-3 text-emerald-500" />}
-                      {stat.trend === 'down' && <ArrowDownLeft className="h-3 w-3 text-red-500" />}
-                      {stat.sub}
-                    </p>
-                  </div>
-                  <div className={`rounded-xl p-3 ${stat.bg}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Sales Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">نمودار فروش هفتگی</CardTitle>
-            <CardDescription>فروش و درآمد ۷ روز اخیر</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis
-                    yAxisId="revenue"
-                    orientation="left"
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toLocaleString('fa-AF')}K` : toFarsi(v)}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis
-                    yAxisId="count"
-                    orientation="right"
-                    tick={{ fontSize: 11 }}
-                    allowDecimals={false}
-                    className="text-muted-foreground"
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend
-                    formatter={(value: string) => <span className="text-sm">{value}</span>}
-                  />
-                  <Bar
-                    yAxisId="revenue"
-                    dataKey="revenue"
-                    name="درآمد"
-                    fill="#10b981"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={40}
-                  />
-                  <Bar
-                    yAxisId="count"
-                    dataKey="sales"
-                    name="فروش"
-                    fill="#3b82f6"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={40}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Selling Products Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">پرفروش‌ترین محصولات</CardTitle>
-            <CardDescription>محصولات بر اساس تعداد فروش</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={data.topSellingProducts.slice(0, 8)}
-                  layout="vertical"
-                  margin={{ top: 5, right: 10, left: 80, bottom: 5 }}
+      {/* ═══ Hero Revenue Card ═══ */}
+      <Card className="overflow-hidden border-0 bg-gradient-to-l from-rose-50 via-white to-white dark:from-rose-950/30 dark:via-card dark:to-card">
+        <CardContent className="p-6 md:p-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">درآمد این ماه</p>
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+                  {toFarsi(data.salesMonth.revenue)}
+                </h2>
+                <span className="text-lg text-muted-foreground">افغانی</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-xs font-medium px-2 py-0.5',
+                    isGrowthPositive
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                  )}
                 >
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v: number) => toFarsi(v)} />
-                  <YAxis
-                    type="category"
-                    dataKey="productName"
-                    width={75}
-                    tick={{ fontSize: 11 }}
-                    className="text-muted-foreground"
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (!active || !payload?.length) return null
-                      const item = payload[0]
-                      return (
-                        <div className="rounded-lg border bg-background p-3 shadow-lg" dir="rtl">
-                          <p className="font-medium">{item.payload.productName}</p>
-                          <p className="text-sm text-emerald-600">تعداد فروش: {toFarsi(Number(item.value))}</p>
-                          <p className="text-sm text-muted-foreground">
-                            درآمد: {toFarsi(item.payload.totalRevenue)} افغانی
-                          </p>
-                        </div>
-                      )
-                    }}
-                  />
-                  <Bar
-                    dataKey="totalQuantity"
-                    name="تعداد فروش"
-                    fill="#8b5cf6"
-                    radius={[0, 4, 4, 0]}
-                    maxBarSize={24}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+                  {isGrowthPositive ? (
+                    <ArrowUpRight className="h-3 w-3 ml-0.5" />
+                  ) : (
+                    <ArrowDownRight className="h-3 w-3 ml-0.5" />
+                  )}
+                  {toFarsi(Math.abs(data.growthPercent))}٪
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  مقایسه با ماه قبل: {toFarsi(data.prevMonth.revenue)} افغانی
+                </span>
+              </div>
             </div>
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2 space-x-reverse">
+                {data.recentSales.slice(0, 4).map((sale) => (
+                  <UserAvatar
+                    key={sale.id}
+                    name={sale.customer?.name || 'ف'}
+                    size="md"
+                  />
+                ))}
+              </div>
+              <div className="text-sm">
+                <p className="font-medium">{toFarsi(data.totalCustomers)} مشتری</p>
+                <p className="text-xs text-muted-foreground">{toFarsi(data.salesMonth.count)} فروش</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ═══ Mini Stats Cards ═══ */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {/* Today Sales */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
+                <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs text-muted-foreground">فروش امروز</p>
+                <p className="text-lg font-bold truncate">{toFarsi(data.salesToday.revenue)}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{toFarsi(data.salesToday.count)} فاکتور</p>
+          </CardContent>
+        </Card>
+
+        {/* Top Sales (Best Seller) */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
+                <Flame className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs text-muted-foreground">پرفروش‌ترین</p>
+                <p className="text-sm font-bold truncate">
+                  {data.topSellingProducts[0]?.productName || '—'}
+                </p>
+              </div>
+            </div>
+            {data.topSellingProducts[0] && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {toFarsi(data.topSellingProducts[0].totalQuantity)} عدد فروخته شده
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Total Products */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/40">
+                <Package className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs text-muted-foreground">محصولات</p>
+                <p className="text-lg font-bold">{toFarsi(data.totalProducts)}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">محصول فعال</p>
+          </CardContent>
+        </Card>
+
+        {/* Expenses */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/40">
+                <Wallet className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-xs text-muted-foreground">هزینه‌ها</p>
+                <p className="text-lg font-bold truncate">{toFarsi(data.totalExpensesThisMonth)}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">هزینه این ماه</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Bottom Section: Recent Sales + Low Stock */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Recent Sales Table */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
+      {/* ═══ Charts Section ═══ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Bar Chart - Sales by Category */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <ShoppingCart className="h-5 w-5" />
-                  فروش‌های اخیر
-                </CardTitle>
-                <CardDescription>آخرین ۵ فاکتور ثبت‌شده</CardDescription>
+                <CardTitle className="text-base font-semibold">فروش بر اساس دسته‌بندی</CardTitle>
+                <CardDescription className="text-xs">درآمد هر دسته‌بندی</CardDescription>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <DollarSign className="h-4 w-4" />
-                <span>کل فروش: {toFarsi(data.totalRevenue)} افغانی</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v: number) => toCompactFarsi(v)}
+                    width={50}
+                  />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
+                  <Bar
+                    dataKey="revenue"
+                    name="درآمد"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={48}
+                  >
+                    {categoryChartData.map((entry, index) => (
+                      <Cell key={index} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Category Legend */}
+            <div className="mt-3 flex flex-wrap gap-3 border-t pt-3">
+              {categoryChartData.slice(0, 5).map((cat, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cat.fill }} />
+                  <span className="text-xs text-muted-foreground">{cat.name}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Line/Area Chart - Sales Trend */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">روند فروش</CardTitle>
+                <CardDescription className="text-xs">نمودار درآمد ۳۰ روز اخیر</CardDescription>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={areaChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#e11d48" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#e11d48" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0891b2" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#0891b2" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v: number) => toCompactFarsi(v)}
+                    width={50}
+                  />
+                  <Tooltip content={<AreaChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    name="درآمد"
+                    stroke="#e11d48"
+                    strokeWidth={2.5}
+                    fill="url(#revenueGradient)"
+                    dot={false}
+                    activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: '#e11d48' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="sales"
+                    name="فروش"
+                    stroke="#0891b2"
+                    strokeWidth={2}
+                    fill="url(#salesGradient)"
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#0891b2' }}
+                    yAxisId={0}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═══ Bottom Section: Recent Sales + Sidebar Cards ═══ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Recent Sales Table */}
+        <Card className="lg:col-span-2 hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                  <ShoppingCart className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">فروش‌های اخیر</CardTitle>
+                  <CardDescription className="text-xs">آخرین تراکنش‌های فروش</CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {toFarsi(data.totalRevenue)} افغانی کل فروش
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
             {data.recentSales.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <ShoppingCart className="mb-3 h-12 w-12" />
-                <p>هنوز فروشی ثبت نشده است</p>
+                <ShoppingCart className="mb-3 h-10 w-10 opacity-30" />
+                <p className="text-sm">هنوز فروشی ثبت نشده است</p>
               </div>
             ) : (
               <ScrollArea className="max-h-96">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right">شماره فاکتور</TableHead>
-                      <TableHead className="text-right">مشتری</TableHead>
-                      <TableHead className="text-right">مبلغ کل</TableHead>
-                      <TableHead className="text-right">تخفیف</TableHead>
-                      <TableHead className="text-right">مبلغ نهایی</TableHead>
-                      <TableHead className="text-right">روش پرداخت</TableHead>
-                      <TableHead className="text-right">تاریخ</TableHead>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">فاکتور</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">مشتری</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">مبلغ</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">تخفیف</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">نهایی</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">پرداخت</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-muted-foreground">تاریخ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.recentSales.slice(0, 5).map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell className="font-mono text-sm">{sale.invoiceNumber}</TableCell>
+                    {data.recentSales.slice(0, 7).map((sale) => (
+                      <TableRow key={sale.id} className="group">
+                        <TableCell className="font-mono text-xs">{sale.invoiceNumber}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            {sale.customer?.name || (
-                              <span className="text-muted-foreground">بدون مشتری</span>
-                            )}
+                            <UserAvatar name={sale.customer?.name || '—'} size="sm" />
+                            <span className="text-xs">{sale.customer?.name || 'بدون مشتری'}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{toFarsi(sale.totalAmount)}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-xs">{toFarsi(sale.totalAmount)}</TableCell>
+                        <TableCell className="text-xs">
                           {sale.discount > 0 ? (
                             <span className="text-red-500">-{toFarsi(sale.discount)}</span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="font-semibold">
-                          {toFarsi(sale.finalAmount)}
-                        </TableCell>
+                        <TableCell className="text-xs font-semibold">{toFarsi(sale.finalAmount)}</TableCell>
                         <TableCell>{getPaymentBadge(sale.paymentMethod)}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {formatDateTime(sale.createdAt)}
                         </TableCell>
                       </TableRow>
@@ -512,69 +662,137 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Low Stock Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              هشدار موجودی
-            </CardTitle>
-            <CardDescription>
-              {toFarsi(data.lowStockCount)} محصول با موجودی کم
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {data.lowStockProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <Package className="mb-3 h-12 w-12" />
-                <p>تمام محصولات موجودی کافی دارند</p>
-              </div>
-            ) : (
-              <ScrollArea className="max-h-80">
-                <div className="space-y-3">
-                  {(data.lowStockProducts as LowStockProduct[]).map((product) => {
-                    const isOutOfStock = product.stock === 0
-                    return (
-                      <div
-                        key={product.id}
-                        className={`rounded-lg border p-3 transition-colors hover:bg-muted/50 ${
-                          isOutOfStock ? 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20' : 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">{product.sku}</p>
-                          </div>
-                          <div
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                              isOutOfStock
-                                ? 'bg-red-100 dark:bg-red-900/50'
-                                : 'bg-amber-100 dark:bg-amber-900/50'
-                            }`}
-                          >
-                            {isOutOfStock ? (
-                              <AlertTriangle className="h-4 w-4 text-red-600" />
-                            ) : (
-                              <ArrowDownLeft className="h-4 w-4 text-amber-600" />
-                            )}
-                          </div>
-                        </div>
-                        <Separator className="my-2" />
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">موجودی فعلی:</span>
-                          <span className={`font-bold ${isOutOfStock ? 'text-red-600' : 'text-amber-600'}`}>
-                            {toFarsi(product.stock)} {product.stock === 0 ? '(ناموجود)' : `/ ${toFarsi(product.minStock)}`}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
+        {/* Right Sidebar Cards */}
+        <div className="space-y-4">
+          {/* Low Stock Alert */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/40">
+                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold">هشدار موجودی</CardTitle>
+                    <CardDescription className="text-xs">
+                      {toFarsi(data.lowStockCount)} محصول
+                    </CardDescription>
+                  </div>
                 </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {data.lowStockProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                  <Package className="mb-2 h-8 w-8 opacity-30" />
+                  <p className="text-xs">موجودی کافی</p>
+                </div>
+              ) : (
+                <ScrollArea className="max-h-48">
+                  <div className="space-y-2">
+                    {(data.lowStockProducts as LowStockProduct[]).slice(0, 5).map((product) => {
+                      const isOutOfStock = product.stock === 0
+                      return (
+                        <div
+                          key={product.id}
+                          className={cn(
+                            'flex items-center justify-between rounded-lg border p-2.5 transition-colors',
+                            isOutOfStock
+                              ? 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20'
+                              : 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'
+                          )}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium">{product.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{product.sku}</p>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[10px] shrink-0',
+                              isOutOfStock
+                                ? 'border-red-300 text-red-600'
+                                : 'border-amber-300 text-amber-600'
+                            )}
+                          >
+                            {isOutOfStock ? 'ناموجود' : `${toFarsi(product.stock)}`}
+                          </Badge>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top Products Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                  <Trophy className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">پرفروش‌ترین‌ها</CardTitle>
+                  <CardDescription className="text-xs">بر اساس تعداد فروش</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {data.topSellingProducts.slice(0, 5).map((product, index) => {
+                  const maxQty = data.topSellingProducts[0]?.totalQuantity || 1
+                  const percentage = (product.totalQuantity / maxQty) * 100
+                  const barColors = ['bg-rose-500', 'bg-cyan-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500']
+                  return (
+                    <div key={product.productId} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white bg-muted-foreground">
+                            {toFarsi(index + 1)}
+                          </span>
+                          <span className="text-xs font-medium truncate max-w-[120px]">{product.productName}</span>
+                        </div>
+                        <span className="text-xs font-semibold">{toFarsi(product.totalQuantity)}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn('h-full rounded-full transition-all duration-500', barColors[index])}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 rounded-lg bg-muted/50 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                    <span className="text-[10px] text-muted-foreground">سود خالص تقریبی</span>
+                  </div>
+                  <p className="text-sm font-bold">
+                    {toFarsi(Math.max(0, data.salesMonth.revenue - data.totalExpensesThisMonth))}
+                  </p>
+                </div>
+                <div className="space-y-1 rounded-lg bg-muted/50 p-3">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-violet-500" />
+                    <span className="text-[10px] text-muted-foreground">فروش هفتگی</span>
+                  </div>
+                  <p className="text-sm font-bold">{toFarsi(data.salesWeek.count)} فاکتور</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

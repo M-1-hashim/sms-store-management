@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// Convert BigInt values to Number for JSON serialization
+function serialize<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "bigint") return Number(obj) as unknown as T;
+  if (Array.isArray(obj)) return obj.map(serialize) as unknown as T;
+  if (typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const key in obj as Record<string, unknown>) {
+      result[key] = serialize((obj as Record<string, unknown>)[key]);
+    }
+    return result as unknown as T;
+  }
+  return obj;
+}
+
 // GET /api/dashboard — dashboard statistics
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +34,10 @@ export async function GET(request: NextRequest) {
     // Month start
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Previous month
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
     // Chart period start
     const chartDays = parseInt(period, 10) === 30 ? 30 : 7;
     const chartStart = new Date(todayStart);
@@ -29,6 +48,7 @@ export async function GET(request: NextRequest) {
       salesToday,
       salesWeek,
       salesMonth,
+      prevMonthSales,
       totalRevenue,
       totalProducts,
       lowStockRows,
@@ -36,6 +56,8 @@ export async function GET(request: NextRequest) {
       recentSales,
       topProducts,
       totalExpenses,
+      totalCustomers,
+      categoryRevenue,
     ] = await Promise.all([
       // Sales today
       db.sale.aggregate({
@@ -58,6 +80,13 @@ export async function GET(request: NextRequest) {
         _sum: { finalAmount: true },
       }),
 
+      // Previous month sales (for comparison)
+      db.sale.aggregate({
+        where: { createdAt: { gte: prevMonthStart, lte: prevMonthEnd } },
+        _count: true,
+        _sum: { finalAmount: true },
+      }),
+
       // Total revenue (all time)
       db.sale.aggregate({
         _sum: { finalAmount: true },
@@ -67,7 +96,6 @@ export async function GET(request: NextRequest) {
       db.product.count({ where: { isActive: true } }),
 
       // Low stock products (stock <= minStock)
-      // Prisma doesn't support field-to-field comparison, so use raw SQL
       db.$queryRaw`SELECT COUNT(*) as count FROM Product WHERE isActive = 1 AND stock <= minStock`,
 
       // Low stock products details (up to 10)
@@ -98,6 +126,24 @@ export async function GET(request: NextRequest) {
         where: { date: { gte: monthStart } },
         _sum: { amount: true },
       }),
+
+      // Total customers
+      db.customer.count(),
+
+      // Revenue by category
+      db.$queryRaw`
+        SELECT 
+          c.id as categoryId,
+          c.name as categoryName,
+          c.color as categoryColor,
+          COALESCE(SUM(si.totalPrice), 0) as totalRevenue,
+          COUNT(DISTINCT si.saleId) as totalSales
+        FROM Category c
+        LEFT JOIN Product p ON p.categoryId = c.id
+        LEFT JOIN SaleItem si ON si.productId = p.id
+        GROUP BY c.id, c.name, c.color
+        ORDER BY totalRevenue DESC
+      `,
     ]);
 
     // Fetch product details for top products
@@ -123,9 +169,6 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < chartDays; i++) {
       const day = new Date(chartStart);
       day.setDate(day.getDate() + i);
-      const dayEnd = new Date(day);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
       const dayLabel = day.toLocaleDateString("fa-IR", {
         month: "short",
         day: "numeric",
@@ -155,6 +198,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Calculate growth percentage
+    const prevRevenue = prevMonthSales._sum.finalAmount ?? 0;
+    const currentRevenue = salesMonth._sum.finalAmount ?? 0;
+    const growthPercent = prevRevenue > 0
+      ? (((currentRevenue - prevRevenue) / prevRevenue) * 100).toFixed(1)
+      : "0";
+
+    const categoryRevenueData = (categoryRevenue as Array<Record<string, unknown>>).map((cat) => ({
+      categoryId: String(cat.categoryId),
+      categoryName: String(cat.categoryName),
+      categoryColor: String(cat.categoryColor),
+      totalRevenue: Number(cat.totalRevenue),
+      totalSales: Number(cat.totalSales),
+    }));
+
     return NextResponse.json({
       success: true,
       data: {
@@ -170,14 +228,21 @@ export async function GET(request: NextRequest) {
           count: salesMonth._count,
           revenue: salesMonth._sum.finalAmount ?? 0,
         },
+        prevMonth: {
+          count: prevMonthSales._count,
+          revenue: prevRevenue,
+        },
+        growthPercent: Number(growthPercent),
         totalRevenue: totalRevenue._sum.finalAmount ?? 0,
         totalProducts,
-        lowStockCount: Number((lowStockRows as Array<{ count: number }>)[0]?.count ?? 0),
-        lowStockProducts: lowStockProductRows as Array<Record<string, unknown>>,
+        totalCustomers,
+        lowStockCount: Number((lowStockRows as Array<{ count: number | bigint }>)[0]?.count ?? 0),
+        lowStockProducts: serialize(lowStockProductRows) as Array<Record<string, unknown>>,
         recentSales,
         topSellingProducts,
         chartData,
         totalExpensesThisMonth: totalExpenses._sum.amount ?? 0,
+        categoryRevenue: categoryRevenueData,
       },
     });
   } catch (error) {
