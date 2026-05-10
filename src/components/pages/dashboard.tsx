@@ -29,6 +29,8 @@ import {
   Wallet,
   BarChart3,
   Star,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 import {
@@ -50,6 +52,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -248,6 +251,9 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAllTopProducts, setShowAllTopProducts] = useState(false)
+  const [showAllStockAlerts, setShowAllStockAlerts] = useState(false)
+  const [showAllRecentSales, setShowAllRecentSales] = useState(false)
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -629,7 +635,8 @@ export default function DashboardPage() {
                 <p className="text-sm">هنوز فروشی ثبت نشده است</p>
               </div>
             ) : (
-              <ScrollArea className="max-h-96">
+              <>
+              <ScrollArea className={showAllRecentSales ? 'max-h-[500px]' : 'max-h-96'}>
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -643,7 +650,7 @@ export default function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.recentSales.slice(0, 7).map((sale) => (
+                    {data.recentSales.slice(0, showAllRecentSales ? undefined : 7).map((sale) => (
                       <TableRow key={sale.id} className="group">
                         <TableCell className="font-mono text-xs">{sale.invoiceNumber}</TableCell>
                         <TableCell>
@@ -669,7 +676,30 @@ export default function DashboardPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+                </ScrollArea>
+                {data.recentSales.length > 7 && (
+                  <div className="border-t px-4 py-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowAllRecentSales(!showAllRecentSales)}
+                    >
+                      {showAllRecentSales ? (
+                        <>
+                          <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                          نمایش کمتر
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                          نمایش بیشتر ({toFarsi(data.recentSales.length - 7)} فروش دیگر)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -691,7 +721,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {data.topSellingProducts.slice(0, 5).map((product, index) => {
+                {data.topSellingProducts.slice(0, showAllTopProducts ? undefined : 5).map((product, index) => {
                   const maxQty = data.topSellingProducts[0]?.totalQuantity || 1
                   const percentage = (product.totalQuantity / maxQty) * 100
                   const barColors = ['bg-rose-500', 'bg-cyan-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500']
@@ -716,6 +746,26 @@ export default function DashboardPage() {
                   )
                 })}
               </div>
+              {data.topSellingProducts.length > 5 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-3 w-full text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowAllTopProducts(!showAllTopProducts)}
+                >
+                  {showAllTopProducts ? (
+                    <>
+                      <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                      نمایش کمتر
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                      نمایش بیشتر ({toFarsi(data.topSellingProducts.length - 5)} محصول)
+                    </>
+                  )}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -764,9 +814,10 @@ export default function DashboardPage() {
                   <p className="text-xs">موجودی کافی</p>
                 </div>
               ) : (
-                <ScrollArea className="max-h-72">
+                <>
+                <ScrollArea className={showAllStockAlerts ? 'max-h-96' : 'max-h-72'}>
                   <div className="space-y-2.5 pr-1">
-                  {(data.lowStockProducts as LowStockProduct[]).map((product) => {
+                  {(data.lowStockProducts as LowStockProduct[]).slice(0, showAllStockAlerts ? undefined : 5).map((product) => {
                     const isOutOfStock = product.stock === 0
                     const isCritical = product.stock === 0 || product.stock <= Math.floor(product.minStock * 0.3)
                     const stockRatio = product.minStock > 0 ? Math.min((product.stock / product.minStock) * 100, 100) : 0
@@ -845,6 +896,27 @@ export default function DashboardPage() {
                   })}
                   </div>
                 </ScrollArea>
+                {(data.lowStockProducts as LowStockProduct[]).length > 5 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 w-full text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAllStockAlerts(!showAllStockAlerts)}
+                  >
+                    {showAllStockAlerts ? (
+                      <>
+                        <ChevronUp className="ml-1 h-3.5 w-3.5" />
+                        نمایش کمتر
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="ml-1 h-3.5 w-3.5" />
+                        نمایش بیشتر ({toFarsi((data.lowStockProducts as LowStockProduct[]).length - 5)} محصول دیگر)
+                      </>
+                    )}
+                  </Button>
+                )}
+                </>
               )}
             </CardContent>
           </Card>

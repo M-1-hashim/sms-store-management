@@ -117,3 +117,24 @@ Stage Summary:
 - Added 3 Recharts visualizations: daily sales bar chart, payment pie chart, expense pie chart
 - Consistent design language: gradient hero cards, mini stat cards, hover effects, progress bars
 - Proper RTL support throughout the page
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Add "Show More" functionality to dashboard lists that overflow cards
+
+Work Log:
+- Added 3 state variables: `showAllTopProducts`, `showAllStockAlerts`, `showAllRecentSales`
+- Added `ChevronDown` and `ChevronUp` icons from lucide-react
+- Added `Button` import from shadcn/ui
+- **Top Products card**: Initial display limit of 5 items, "نمایش بیشتر (X محصول)" button shows remaining count, "نمایش کمتر" to collapse
+- **Low Stock Alert card**: Initial display limit of 5 items with ScrollArea (max-h-72), show more expands to max-h-96, "نمایش بیشتر (X محصول دیگر)" button
+- **Recent Sales table**: Initial display of 7 rows with ScrollArea (max-h-96), show more expands to max-h-[500px], "نمایش بیشتر (X فروش دیگر)" button
+- Wrapped ScrollArea + show more in React fragments for ternary compatibility
+- Fixed stray `\n` escape in JSX
+- All lint checks pass clean
+
+Stage Summary:
+- All three dashboard lists now have "Show More / Show Less" toggle buttons
+- Lists no longer overflow their card containers
+- Consistent UX pattern across all expandable lists with ChevronDown/ChevronUp icons
