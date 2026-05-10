@@ -136,3 +136,22 @@ Stage Summary:
 - Logout button in header
 - Files modified: schema.prisma, page.tsx, settings.tsx, globals.css
 - Files created: api/auth/route.ts, auth-store.ts, auth-screen.tsx
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix invoice printing - popup blocker issue
+
+Work Log:
+- Investigated `src/lib/print-invoice.ts` - found root cause: `window.open()` was called AFTER `await apiFetch('/api/settings')`, causing browser popup blockers to block it (no longer in direct user-click context)
+- Refactored `printInvoice` to open window IMMEDIATELY (synchronously) in the user-click context
+- Added loading state HTML shown while settings are being fetched asynchronously
+- Settings are fetched after window opens, then the full invoice HTML replaces the loading state
+- Added fallback handling if window.open is still blocked
+- Split HTML generation into `buildInvoiceHtml()` and `buildLoadingHtml()` helper functions
+
+Stage Summary:
+- Invoice printing now works reliably - window opens immediately on click
+- Loading spinner shown while settings are fetched, then replaced with full invoice
+- No new lint errors introduced
+- Files modified: src/lib/print-invoice.ts
