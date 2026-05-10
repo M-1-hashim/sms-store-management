@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync, copyFileSync, resolve } from 'fs'
 import { join } from 'path'
-import { writeFile } from 'fs/promises'
+import { writeFile, readFile } from 'fs/promises'
 import { db } from '@/lib/db'
+import { withAuth } from '@/lib/validate-auth'
 
 const DB_PATH = join(process.cwd(), 'db', 'custom.db')
 const BACKUP_DIR = join(process.cwd(), 'db', 'backups')
@@ -23,6 +24,9 @@ function generateBackupFilename(prefix = 'backup') {
 
 // GET /api/backup - List, download, delete, auto-backup status
 export async function GET(request: Request) {
+  const auth = await withAuth(request as any)
+  if (!auth.valid) return auth.response
+
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action')
   const filename = searchParams.get('file')
@@ -165,6 +169,9 @@ export async function GET(request: Request) {
 
 // POST /api/backup - Create backup, restore, or upload
 export async function POST(request: Request) {
+  const auth = await withAuth(request as any)
+  if (!auth.valid) return auth.response
+
   const contentType = request.headers.get('content-type') || ''
 
   // File upload (FormData) — restore from uploaded file
@@ -195,6 +202,18 @@ export async function POST(request: Request) {
       const uploadPath = join(BACKUP_DIR, uploadFilename)
       const bytes = await file.arrayBuffer()
       await writeFile(uploadPath, Buffer.from(bytes))
+
+      // Validate SQLite header magic bytes
+      const uploadedBuffer = await readFile(uploadPath)
+      const header = uploadedBuffer.slice(0, 16).toString('utf8')
+      if (!header.startsWith('SQLite format 3')) {
+        // Delete invalid file
+        unlinkSync(uploadPath)
+        return NextResponse.json(
+          { success: false, error: 'فایل انتخاب شده یک دیتابیس SQLite معتبر نیست' },
+          { status: 400 }
+        )
+      }
 
       // Create pre-restore backup of current DB
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)

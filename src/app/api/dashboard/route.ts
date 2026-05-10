@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withAuth } from "@/lib/validate-auth";
 
 // Convert BigInt values to Number for JSON serialization
 function serialize<T>(obj: T): T {
@@ -19,6 +20,9 @@ function serialize<T>(obj: T): T {
 // GET /api/dashboard — dashboard statistics
 export async function GET(request: NextRequest) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "7"; // 7 or 30 days for chart
 

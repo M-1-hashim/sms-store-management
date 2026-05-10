@@ -13,7 +13,7 @@ function createWindow() {
     height: 900,
     minWidth: 1000,
     minHeight: 700,
-    title: 'سیستم مدریتی فروشگاه',
+    title: 'سیستم مدیریتی فروشگاه',
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       nodeIntegration: false,

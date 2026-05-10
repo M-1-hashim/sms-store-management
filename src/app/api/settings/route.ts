@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { withAuth } from '@/lib/validate-auth'
+
+// Fields to never expose to the client
+const SENSITIVE_FIELDS = ['passwordHash', 'sessionToken', 'sessionExpiry', 'failedAttempts', 'lockUntil'] as const
 
 // GET /api/settings - Fetch settings (create default if not exists)
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Validate authentication
+    const auth = await withAuth(request as any)
+    if (!auth.valid) {
+      return auth.response
+    }
+
     let settings = await db.settings.findUnique({
       where: { id: 'main' },
     })
@@ -14,7 +24,13 @@ export async function GET() {
       })
     }
 
-    return NextResponse.json({ success: true, data: settings })
+    // Remove sensitive fields from response
+    const safeSettings = { ...settings }
+    for (const field of SENSITIVE_FIELDS) {
+      delete (safeSettings as any)[field]
+    }
+
+    return NextResponse.json({ success: true, data: safeSettings })
   } catch (error) {
     console.error('Error fetching settings:', error)
     return NextResponse.json(
@@ -27,6 +43,12 @@ export async function GET() {
 // PUT /api/settings - Update settings
 export async function PUT(request: Request) {
   try {
+    // Validate authentication
+    const auth = await withAuth(request as any)
+    if (!auth.valid) {
+      return auth.response
+    }
+
     const body = await request.json()
 
     const {
@@ -71,7 +93,11 @@ export async function PUT(request: Request) {
           backupKeepCount: backupKeepCount || 10,
         },
       })
-      return NextResponse.json({ success: true, data: settings })
+      const safeSettings = { ...settings }
+      for (const field of SENSITIVE_FIELDS) {
+        delete (safeSettings as any)[field]
+      }
+      return NextResponse.json({ success: true, data: safeSettings })
     }
 
     // Update existing
@@ -95,7 +121,12 @@ export async function PUT(request: Request) {
       },
     })
 
-    return NextResponse.json({ success: true, data: settings })
+    const safeSettings = { ...settings }
+    for (const field of SENSITIVE_FIELDS) {
+      delete (safeSettings as any)[field]
+    }
+
+    return NextResponse.json({ success: true, data: safeSettings })
   } catch (error) {
     console.error('Error updating settings:', error)
     return NextResponse.json(

@@ -428,6 +428,7 @@ export default function InventoryPage() {
                     variant="outline"
                     size="sm"
                     className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                    onClick={() => toast.info('این قابلیت به زودی اضافه می\u200cشود')}
                   >
                     <RefreshCcw className="size-3.5" />
                     سفارش مجدد

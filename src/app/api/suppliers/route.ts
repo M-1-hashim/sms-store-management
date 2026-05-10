@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withAuth } from "@/lib/validate-auth";
 
 // GET /api/suppliers — list suppliers
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const suppliers = await db.supplier.findMany({
       orderBy: { name: "asc" },
     });
@@ -21,6 +25,9 @@ export async function GET() {
 // POST /api/suppliers — create supplier
 export async function POST(request: NextRequest) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const body = await request.json();
     const { name, phone, email, address } = body;
 

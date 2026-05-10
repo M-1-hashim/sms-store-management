@@ -345,7 +345,7 @@ export default function SettingsPage() {
   const [showPasswords, setShowPasswords] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
 
-  const { token, setAuthenticated, logout } = useAuthStore()
+  const { token, setAuthenticated } = useAuthStore()
 
   const [uploading, setUploading] = useState(false)
   const uploadRef = useRef<HTMLInputElement>(null)

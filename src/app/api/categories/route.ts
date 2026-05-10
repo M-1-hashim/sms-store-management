@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withAuth } from "@/lib/validate-auth";
 
 // GET /api/categories — list all categories with product count
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const categories = await db.category.findMany({
       orderBy: { name: "asc" },
       include: {
@@ -26,6 +30,9 @@ export async function GET() {
 // POST /api/categories — create category
 export async function POST(request: NextRequest) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const body = await request.json();
     const { name, description, color } = body;
 

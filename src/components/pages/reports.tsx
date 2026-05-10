@@ -29,30 +29,29 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Legend,
 } from 'recharts'
 import {
-  CalendarDays,
   TrendingUp,
   TrendingDown,
+  CalendarDays,
   Package,
   DollarSign,
   BarChart3,
-  ArrowUpRight,
-  ArrowDownRight,
   Wallet,
   ShoppingBag,
   PieChart as PieChartIcon,
   FileBarChart,
   AlertTriangle,
   Receipt,
-  Calculator,
-  CircleDollarSign,
   Filter,
   RotateCcw,
-  Percent,
   Layers,
   BoxesIcon,
+  ArrowUpRight,
+  ArrowDownRight,
+  CircleDollarSign,
+  Percent,
+  Calculator,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -111,8 +110,8 @@ interface TooltipProps {
 function ChartTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-xl border bg-white p-3 shadow-xl" dir="rtl">
-      <p className="mb-2 text-sm font-semibold text-gray-800">{label}</p>
+    <div className="rounded-xl border bg-popover p-3 shadow-xl" dir="rtl">
+      <p className="mb-2 text-sm font-semibold text-popover-foreground">{label}</p>
       {payload.map((entry, i) => (
         <p key={i} className="text-sm" style={{ color: entry.color }}>
           {entry.name}: {toFarsi(entry.value)} افغانی
@@ -125,7 +124,7 @@ function ChartTooltip({ active, payload, label }: TooltipProps) {
 function PieTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-xl border bg-white p-3 shadow-xl" dir="rtl">
+    <div className="rounded-xl border bg-popover p-3 shadow-xl" dir="rtl">
       {payload.map((entry, i) => (
         <p key={i} className="text-sm font-medium" style={{ color: entry.color }}>
           {entry.name}: {toFarsi(entry.value)} افغانی
@@ -473,7 +472,7 @@ function SalesReportTab() {
                         <stop offset="95%" stopColor="#e11d48" stopOpacity={0.6} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => toCompactFarsi(v)} width={55} />
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
@@ -787,7 +786,7 @@ function InventoryReportTab() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => toCompactFarsi(v)} width={55} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />

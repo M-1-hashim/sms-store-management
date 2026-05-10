@@ -92,25 +92,109 @@ export function AppCalculator() {
     }
   }, [expression, hasResult, clear])
 
+  // Safe math expression evaluator (recursive descent parser)
+  const safeEval = (expr: string): number => {
+    let pos = 0
+
+    const skipSpaces = () => { while (pos < expr.length && expr[pos] === ' ') pos++ }
+    
+    const parseNumber = (): number => {
+      skipSpaces()
+      let start = pos
+      let hasDot = false
+      if (expr[pos] === '-') { pos++ } // negative prefix
+      if (expr[pos] === '+') { pos++ }
+      while (pos < expr.length && (expr[pos] >= '0' && expr[pos] <= '9' || expr[pos] === '.')) {
+        if (expr[pos] === '.') {
+          if (hasDot) break
+          hasDot = true
+        }
+        pos++
+      }
+      if (pos === start || (pos === start + 1 && (expr[start] === '-' || expr[start] === '+'))) {
+        throw new Error('Invalid number')
+      }
+      return parseFloat(expr.slice(start, pos))
+    }
+
+    const parseFactor = (): number => {
+      skipSpaces()
+      if (expr[pos] === '(') {
+        pos++ // skip '('
+        const result = parseExpr()
+        skipSpaces()
+        if (expr[pos] === ')') pos++ // skip ')'
+        return result
+      }
+      if (expr[pos] === '-') {
+        pos++
+        return -parseFactor()
+      }
+      if (expr[pos] === '+') {
+        pos++
+        return parseFactor()
+      }
+      return parseNumber()
+    }
+
+    const parseTerm = (): number => {
+      let left = parseFactor()
+      while (pos < expr.length) {
+        skipSpaces()
+        const op = expr[pos]
+        if (op === '*') {
+          pos++
+          left *= parseFactor()
+        } else if (op === '/') {
+          pos++
+          const right = parseFactor()
+          if (right === 0) throw new Error('Division by zero')
+          left /= right
+        } else break
+      }
+      return left
+    }
+
+    const parseExpr = (): number => {
+      let left = parseTerm()
+      while (pos < expr.length) {
+        skipSpaces()
+        const op = expr[pos]
+        if (op === '+') {
+          pos++
+          left += parseTerm()
+        } else if (op === '-') {
+          pos++
+          left -= parseTerm()
+        } else if (op === '%') {
+          pos++
+          left = left / 100
+        } else break
+      }
+      return left
+    }
+
+    const result = parseExpr()
+    if (pos < expr.length) throw new Error('Unexpected character')
+    return result
+  }
+
   const calculate = useCallback(() => {
     try {
-      // Replace display operators with JS operators
+      // Replace display operators with parser operators
       let expr = expression
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
         .replace(/٪/g, '%')
 
-      // Handle percentage: 100% => 1, 50% => 0.5
-      expr = expr.replace(/(\d+\.?\d*)%/g, '($1/100)')
-
-      // Safety check
-      if (!expr || /[\+\-\*\/]$/.test(expr.replace(/\(.*?\)/g, ''))) {
+      // Safety: only allow digits, operators, dots, parens, spaces
+      if (!expr || !/^[\d\+\-\*\/\.\(\)\s%]+$/.test(expr)) {
         return
       }
 
-      const result = Function('"use strict"; return (' + expr + ')')()
+      const result = safeEval(expr)
 
-      if (result === undefined || result === null || isNaN(result) || !isFinite(result)) {
+      if (isNaN(result) || !isFinite(result)) {
         setDisplay('خطا')
         return
       }
@@ -178,7 +262,6 @@ export function AppCalculator() {
       else if (e.key === '%') { e.preventDefault(); percent() }
       else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); calculate() }
       else if (e.key === 'Backspace') { e.preventDefault(); backspace() }
-      else if (e.key === 'Escape') { e.preventDefault(); clear() }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)

@@ -186,7 +186,7 @@ export default function SuppliersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">تأمین‌کنندگان</h1>
         <Button onClick={openAddDialog}>
           <Plus className="size-4 ml-2" />

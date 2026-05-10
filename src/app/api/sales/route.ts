@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withAuth } from "@/lib/validate-auth";
 
 // GET /api/sales — list sales with items, customer, product details
 export async function GET(request: NextRequest) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const { searchParams } = new URL(request.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");
@@ -64,6 +68,9 @@ export async function GET(request: NextRequest) {
 // POST /api/sales — create a sale with items in a transaction
 export async function POST(request: NextRequest) {
   try {
+    const auth = await withAuth(request as any)
+    if (!auth.valid) return auth.response
+
     const body = await request.json();
     const { customerId, items, discount, paymentMethod, paidAmount, notes } = body;
 

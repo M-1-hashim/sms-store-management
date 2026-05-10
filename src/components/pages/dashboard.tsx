@@ -66,7 +66,7 @@ interface DashboardData {
   totalProducts: number
   totalCustomers: number
   lowStockCount: number
-  lowStockProducts: Array<Record<string, unknown>>
+  lowStockProducts: LowStockProduct[]
   recentSales: RecentSale[]
   topSellingProducts: TopProduct[]
   chartData: ChartDataPoint[]
@@ -160,8 +160,8 @@ interface CustomTooltipProps {
 function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-xl border bg-white p-3 shadow-xl" dir="rtl">
-      <p className="mb-2 text-sm font-semibold text-gray-800">{label}</p>
+    <div className="rounded-xl border bg-popover p-3 shadow-xl" dir="rtl">
+      <p className="mb-2 text-sm font-semibold text-popover-foreground">{label}</p>
       {payload.map((entry, index) => (
         <p key={index} className="text-sm" style={{ color: entry.color }}>
           {entry.name}: {toFarsi(entry.value)} افغانی
@@ -174,8 +174,8 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
 function AreaChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="rounded-xl border bg-white p-3 shadow-xl" dir="rtl">
-      <p className="mb-2 text-sm font-semibold text-gray-800">{label}</p>
+    <div className="rounded-xl border bg-popover p-3 shadow-xl" dir="rtl">
+      <p className="mb-2 text-sm font-semibold text-popover-foreground">{label}</p>
       {payload.map((entry, index) => (
         <p key={index} className="text-sm" style={{ color: entry.color }}>
           {entry.name === 'درآمد' ? `درآمد: ${toFarsi(entry.value)} افغانی` : `فروش: ${toFarsi(entry.value)} عدد`}
@@ -496,7 +496,7 @@ export default function DashboardPage() {
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={categoryChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
                     dataKey="name"
                     tick={{ fontSize: 11 }}
@@ -563,7 +563,7 @@ export default function DashboardPage() {
                       <stop offset="95%" stopColor="#0891b2" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 10 }}
@@ -798,7 +798,7 @@ export default function DashboardPage() {
                 </div>
                 {data.lowStockCount > 0 && (
                   <Badge variant="destructive" className="text-[10px] px-1.5">
-                    {data.lowStockProducts.filter((p) => (p as LowStockProduct).stock === 0).length > 0 && (
+                    {data.lowStockProducts.filter((p) => p.stock === 0).length > 0 && (
                       <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                     )}
                     {toFarsi(data.lowStockCount)}
@@ -816,7 +816,7 @@ export default function DashboardPage() {
                 <>
                 <div style={{ maxHeight: showAllStockAlerts ? '384px' : '288px', overflowY: 'auto', overflowX: 'auto' }}>
                   <div className="space-y-2.5 pr-1">
-                  {(data.lowStockProducts as LowStockProduct[]).slice(0, showAllStockAlerts ? undefined : 5).map((product) => {
+                  {(data.lowStockProducts).slice(0, showAllStockAlerts ? undefined : 5).map((product) => {
                     const isOutOfStock = product.stock === 0
                     const isCritical = product.stock === 0 || product.stock <= Math.floor(product.minStock * 0.3)
                     const stockRatio = product.minStock > 0 ? Math.min((product.stock / product.minStock) * 100, 100) : 0
@@ -895,7 +895,7 @@ export default function DashboardPage() {
                   })}
                   </div>
                 </div>
-                {(data.lowStockProducts as LowStockProduct[]).length > 5 && (
+                {(data.lowStockProducts).length > 5 && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -910,7 +910,7 @@ export default function DashboardPage() {
                     ) : (
                       <>
                         <ChevronDown className="ml-1 h-3.5 w-3.5" />
-                        نمایش بیشتر ({toFarsi((data.lowStockProducts as LowStockProduct[]).length - 5)} محصول دیگر)
+                        نمایش بیشتر ({toFarsi(data.lowStockProducts.length - 5)} محصول دیگر)
                       </>
                     )}
                   </Button>
