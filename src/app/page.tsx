@@ -154,9 +154,10 @@ function AppContent() {
 
 export default function HomePage() {
   const mounted = useMounted()
-  const { isAuthenticated, isInitialized } = useAuthStore()
+  const { isAuthenticated } = useAuthStore()
 
-  if (!mounted || !isInitialized) {
+  // Wait for hydration only
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -169,7 +170,7 @@ export default function HomePage() {
     )
   }
 
-  // Show auth screen if not authenticated
+  // Show auth screen if not authenticated (AuthScreen handles its own init)
   if (!isAuthenticated) {
     return <AuthScreen />
   }
