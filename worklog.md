@@ -85,3 +85,54 @@ Stage Summary:
 - Visual distinction between auto and manual backups in list
 - Files modified: schema.prisma, api/settings/route.ts, api/backup/route.ts, settings.tsx
 - Files created: mini-services/auto-backup/index.ts, mini-services/auto-backup/package.json
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Add password protection system with high security
+
+Work Log:
+- Installed bcryptjs and @types/bcryptjs for secure password hashing
+- Updated Prisma schema with security fields: passwordHash, sessionToken, sessionExpiry, failedAttempts, lockoutUntil
+- Ran `bun run db:push` to sync schema
+- Created `/api/auth` route with comprehensive endpoints:
+  - GET ?action=has-password: Check if password has been set
+  - GET (with Bearer token): Validate session token
+  - POST action=setup: Initial password setup (first-time only)
+  - POST action=login: Verify password with rate limiting (5 attempts → 15 min lockout)
+  - POST action=change-password: Change password (requires current password + session)
+  - POST action=logout: Invalidate session
+  - POST action=refresh: Extend session duration
+- Created auth Zustand store (src/lib/auth-store.ts) for client-side session management
+- Created AuthScreen component (src/components/auth-screen.tsx):
+  - Setup mode (first-time): Password + confirm with strength indicator and requirements
+  - Login mode: Password entry with show/hide toggle
+  - Password strength meter (ضعیف/متوسط/خوب/عالی)
+  - Animated shake effect on wrong password
+  - Session validation on mount (auto-login if valid session exists)
+- Updated page.tsx to show AuthScreen when not authenticated, AppContent when authenticated
+- Added logout button in header bar (LogOut icon)
+- Added Security tab (امنیت) to Settings page with:
+  - Password change form (current, new, confirm)
+  - Password strength indicator
+  - Password requirements checklist
+  - Security info card (bcrypt rounds, session duration, rate limits, token info)
+- Added shake keyframe animation to globals.css
+- Security features:
+  - bcrypt with 12 salt rounds
+  - 256-bit random session tokens
+  - 24-hour session duration with refresh
+  - 5 failed attempts → 15-minute account lockout
+  - Password complexity requirements (min 6 chars, letter + number)
+  - Password strength scoring system
+  - Auto-session refresh on page load
+- All lint checks pass (only pre-existing electron/main.js errors)
+
+Stage Summary:
+- Full password protection system with setup and login flow
+- Password changeable from Settings page (Security tab)
+- High security: bcrypt hashing, rate limiting, session management, lockout
+- Clean login/setup UI with password strength indicator
+- Logout button in header
+- Files modified: schema.prisma, page.tsx, settings.tsx, globals.css
+- Files created: api/auth/route.ts, auth-store.ts, auth-screen.tsx

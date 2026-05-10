@@ -115,6 +115,11 @@ model Settings {
   backupFrequency String @default("daily")
   backupKeepCount Int  @default(10)
   lastAutoBackup DateTime?
+  passwordHash String?
+  sessionToken String?
+  sessionExpiry DateTime?
+  failedAttempts Int   @default(0)
+  lockoutUntil DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

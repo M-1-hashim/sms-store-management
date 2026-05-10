@@ -1,13 +1,16 @@
 'use client'
 
 import { useAppStore } from '@/lib/store'
+import { useAuthStore } from '@/lib/auth-store'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { AppCalculator } from '@/components/calculator'
+import { AuthScreen } from '@/components/auth-screen'
 import { cn } from '@/lib/utils'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSyncExternalStore } from 'react'
+import { toast } from 'sonner'
 
 // Lazy imports for page components
 import dynamic from 'next/dynamic'
@@ -53,28 +56,34 @@ function useMounted() {
   )
 }
 
-export default function HomePage() {
+function AppContent() {
   const { sidebarOpen, toggleSidebar } = useAppStore()
-  const mounted = useMounted()
+  const { isAuthenticated, token, logout: authLogout } = useAuthStore()
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center animate-pulse">
-            <div className="w-6 h-6 rounded-md bg-primary/20" />
-          </div>
-          <p className="text-sm text-muted-foreground">در حال بارگذاری...</p>
-        </div>
-      </div>
-    )
+  const handleLogout = async () => {
+    try {
+      if (token) {
+        await fetch('/api/auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: 'logout' }),
+        })
+      }
+    } catch {
+      // Silently fail
+    }
+    authLogout()
+    toast.success('با موفقیت خارج شدید')
   }
 
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={toggleSidebar}
         />
@@ -119,6 +128,15 @@ export default function HomePage() {
                 day: 'numeric'
               })}
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={handleLogout}
+              title="خروج"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
         </header>
 
@@ -132,4 +150,29 @@ export default function HomePage() {
       <AppCalculator />
     </div>
   )
+}
+
+export default function HomePage() {
+  const mounted = useMounted()
+  const { isAuthenticated, isInitialized } = useAuthStore()
+
+  if (!mounted || !isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center animate-pulse">
+            <div className="w-6 h-6 rounded-md bg-primary/20" />
+          </div>
+          <p className="text-sm text-muted-foreground">در حال بارگذاری...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show auth screen if not authenticated
+  if (!isAuthenticated) {
+    return <AuthScreen />
+  }
+
+  return <AppContent />
 }

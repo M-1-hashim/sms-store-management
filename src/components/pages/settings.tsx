@@ -56,7 +56,13 @@ import {
   Clock,
   HardDriveUpload,
   Zap,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react'
+import { useAuthStore } from '@/lib/auth-store'
 import { useTheme } from 'next-themes'
 import { Switch } from '@/components/ui/switch'
 
@@ -141,7 +147,7 @@ export default function SettingsPage() {
   const [backups, setBackups] = useState<BackupFile[]>([])
   const [loadingBackups, setLoadingBackups] = useState(false)
   const [creatingBackup, setCreatingBackup] = useState(false)
-  const [activeTab, setActiveTab] = useState<'store' | 'invoice' | 'display' | 'backup'>('store')
+  const [activeTab, setActiveTab] = useState<'store' | 'invoice' | 'display' | 'security' | 'backup'>('store')
   const [hasChanges, setHasChanges] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -332,6 +338,15 @@ export default function SettingsPage() {
     window.open(`/api/backup?action=download&file=${encodeURIComponent(filename)}`, '_blank')
   }
 
+  // Security - Password change
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPasswords, setShowPasswords] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  const { token, setAuthenticated, logout } = useAuthStore()
+
   const [uploading, setUploading] = useState(false)
   const uploadRef = useRef<HTMLInputElement>(null)
 
@@ -379,8 +394,71 @@ export default function SettingsPage() {
     { id: 'store' as const, label: 'اطلاعات فروشگاه', icon: Store, color: 'text-violet-500' },
     { id: 'invoice' as const, label: 'تنظیمات فاکتور', icon: FileText, color: 'text-amber-500' },
     { id: 'display' as const, label: 'نمایش و ظاهر', icon: Palette, color: 'text-cyan-500' },
+    { id: 'security' as const, label: 'امنیت', icon: Shield, color: 'text-emerald-500' },
     { id: 'backup' as const, label: 'پشتیبان‌گیری', icon: Database, color: 'text-rose-500' },
   ]
+
+  const passwordStrength = (pw: string) => {
+    let score = 0
+    if (pw.length >= 6) score++
+    if (pw.length >= 8) score++
+    if (/[a-zA-Z]/.test(pw)) score++
+    if (/[\u0600-\u06FF]/.test(pw)) score++
+    if (/\d/.test(pw)) score++
+    if (/[^a-zA-Z0-9\u0600-\u06FF]/.test(pw)) score++
+    if (score <= 2) return { score, label: 'ضعیف', color: 'bg-red-500' }
+    if (score <= 3) return { score, label: 'متوسط', color: 'bg-amber-500' }
+    if (score <= 4) return { score, label: 'خوب', color: 'bg-emerald-500' }
+    return { score, label: 'عالی', color: 'bg-emerald-600' }
+  }
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('لطفاً تمام فیلدها را پر کنید')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('رمز عبور جدید و تکرار آن مطابقت ندارند')
+      return
+    }
+    if (newPassword.length < 6) {
+      toast.error('رمز عبور جدید باید حداقل ۶ کاراکتر باشد')
+      return
+    }
+    const strength = passwordStrength(newPassword)
+    if (strength.score <= 2) {
+      toast.error('رمز عبور خیلی ضعیف است. لطفاً از ترکیب حروف و اعداد استفاده کنید.')
+      return
+    }
+    try {
+      setChangingPassword(true)
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'change-password', currentPassword, newPassword }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        toast.success(json.message)
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+        setShowPasswords(false)
+        if (json.token && json.expiresAt) {
+          setAuthenticated(json.token, json.expiresAt)
+        }
+      } else {
+        toast.error(json.error || 'خطا در تغییر رمز عبور')
+      }
+    } catch {
+      toast.error('خطا در ارتباط با سرور')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
 
   if (loading) return <SettingsSkeleton />
 
@@ -709,6 +787,158 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* ==================== SECURITY TAB ==================== */}
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          {/* Password Change */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-emerald-500" />
+                تغییر رمز عبور
+              </CardTitle>
+              <CardDescription>
+                رمز عبور خود را تغییر دهید. رمز عبور فعلی خود را وارد کنید و سپس رمز جدید تعیین کنید.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="current-pw" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                  رمز عبور فعلی
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="current-pw"
+                    type={showPasswords ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="رمز عبور فعلی خود را وارد کنید"
+                    className="pl-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(!showPasswords)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="new-pw" className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-muted-foreground" />
+                  رمز عبور جدید
+                </Label>
+                <Input
+                  id="new-pw"
+                  type={showPasswords ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="رمز عبور جدید"
+                />
+                {newPassword.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${passwordStrength(newPassword).color}`}
+                          style={{ width: `${Math.min((passwordStrength(newPassword).score / 6) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground">{passwordStrength(newPassword).label}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirm-pw">تکرار رمز عبور جدید</Label>
+                <Input
+                  id="confirm-pw"
+                  type={showPasswords ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="رمز عبور جدید را دوباره وارد کنید"
+                  className={confirmPassword.length > 0 && newPassword !== confirmPassword ? 'border-destructive' : ''}
+                />
+                {confirmPassword.length > 0 && newPassword !== confirmPassword && (
+                  <p className="text-xs text-destructive">رمز عبور و تکرار آن مطابقت ندارند</p>
+                )}
+              </div>
+
+              {/* Password Requirements */}
+              <div className="rounded-lg bg-muted/50 p-3 space-y-2">
+                <p className="text-xs font-medium flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground" />
+                  شرایط رمز عبور:
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 mr-5">
+                  <li className={newPassword.length >= 6 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                    {newPassword.length >= 6 ? '✓' : '○'} حداقل ۶ کاراکتر
+                  </li>
+                  <li className={/[a-zA-Z\u0600-\u06FF]/.test(newPassword) ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                    {/[a-zA-Z\u0600-\u06FF]/.test(newPassword) ? '✓' : '○'} حداقل یک حرف
+                  </li>
+                  <li className={/\d/.test(newPassword) ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                    {/\d/.test(newPassword) ? '✓' : '○'} حداقل یک عدد
+                  </li>
+                </ul>
+              </div>
+
+              <Button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+                className="w-full gap-2 h-11"
+              >
+                {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                {changingPassword ? 'در حال تغییر...' : 'تغییر رمز عبور'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Security Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Shield className="h-5 w-5 text-emerald-500" />
+                اطلاعات امنیتی
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg border bg-muted/30 divide-y">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">رمزگذاری رمز عبور</span>
+                  <Badge className="bg-emerald-500 text-white border-emerald-500">bcrypt (12 rounds)</Badge>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">مدت نشست</span>
+                  <Badge variant="outline">۲۴ ساعت</Badge>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">حداکثر تلاش ناموفق</span>
+                  <Badge variant="outline">۵ بار</Badge>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">مدت قفل شدن</span>
+                  <Badge variant="outline">۱۵ دقیقه</Badge>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-muted-foreground">تولید توکن نشست</span>
+                  <Badge variant="outline" dir="ltr">256-bit random</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* ==================== BACKUP TAB ==================== */}
