@@ -138,3 +138,31 @@ Stage Summary:
 - All three dashboard lists now have "Show More / Show Less" toggle buttons
 - Lists no longer overflow their card containers
 - Consistent UX pattern across all expandable lists with ChevronDown/ChevronUp icons
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Deep fix — scroll + show more not working across all pages
+
+Work Log:
+- **Root cause identified**: Radix UI `ScrollArea` component does NOT properly constrain `<Table>` elements — the viewport uses `height: 100%` which requires explicit height on parent, but tables have `display: table` which breaks the layout
+- **Solution**: Replaced ALL `ScrollArea` wrapping tables with native `<div style={{ maxHeight: '...', overflowY: 'auto', overflowX: 'auto' }}>` — inline styles guarantee the constraint
+- **Bug fix in customers.tsx**: `fetchCustomers()` was called without arguments after add/edit/delete, but function signature now requires `pageNum` — fixed to `fetchCustomers(1)`
+- **Bug fix in filter handlers**: `setPage(1)` alone didn't trigger refetch because `fetchCustomers` depends on `search` only — added `setCustomers([])` to clear list, which triggers useEffect via fetchCustomers callback dependency change
+- **Custom scrollbar CSS**: Added `::-webkit-scrollbar` styles in `globals.css` for all `[style*="overflow"]` elements — thin 6px scrollbar with rounded thumb
+- **Files modified**:
+  - `customers.tsx`: Native div overflow + show more + fetch bug fixes + unused import cleanup
+  - `sales.tsx`: Native div overflow + show more + filter handler fixes
+  - `dashboard.tsx`: Native div overflow for recent sales, stock alerts, top products + unused import cleanup
+  - `suppliers.tsx`: Native div overflow (via subagent)
+  - `expenses.tsx`: Native div overflow (via subagent)
+  - `reports.tsx`: Native div overflow for 2 tables (via subagent)
+  - `pos.tsx`: Native div overflow (via subagent)
+  - `globals.css`: Custom scrollbar styling
+- All lint checks pass clean (except electron/main.js which is expected)
+
+Stage Summary:
+- ALL ScrollArea components wrapping tables replaced with native overflow divs across 7 page files
+- Scroll + show more now works on: Dashboard (3 lists), Customers, Sales, Suppliers, Expenses, Reports (2 tables), POS
+- Fixed data fetching bugs that prevented proper list refresh
+- Added custom scrollbar CSS for consistent visual appearance

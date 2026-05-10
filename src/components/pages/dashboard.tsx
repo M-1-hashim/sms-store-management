@@ -50,7 +50,6 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -636,7 +635,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-              <div className={showAllRecentSales ? 'overflow-y-auto max-h-[500px]' : 'overflow-y-auto max-h-96'}>
+              <div style={{ maxHeight: showAllRecentSales ? '500px' : '384px', overflowY: 'auto', overflowX: 'auto' }}>
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
@@ -720,7 +719,7 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-3" style={{ maxHeight: showAllTopProducts ? '400px' : '280px', overflowY: 'auto' }}>
                 {data.topSellingProducts.slice(0, showAllTopProducts ? undefined : 5).map((product, index) => {
                   const maxQty = data.topSellingProducts[0]?.totalQuantity || 1
                   const percentage = (product.totalQuantity / maxQty) * 100
@@ -815,7 +814,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <>
-                <div className={showAllStockAlerts ? 'overflow-y-auto max-h-96' : 'overflow-y-auto max-h-72'}>
+                <div style={{ maxHeight: showAllStockAlerts ? '384px' : '288px', overflowY: 'auto', overflowX: 'auto' }}>
                   <div className="space-y-2.5 pr-1">
                   {(data.lowStockProducts as LowStockProduct[]).slice(0, showAllStockAlerts ? undefined : 5).map((product) => {
                     const isOutOfStock = product.stock === 0

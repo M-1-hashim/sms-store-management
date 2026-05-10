@@ -42,7 +42,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Plus,
   Trash2,
@@ -369,7 +368,7 @@ export default function ExpensesPage() {
       {/* Expenses Table */}
       <Card>
         <CardContent className="pt-6">
-          <ScrollArea className="max-h-[520px]">
+          <div style={{ maxHeight: '520px', overflowY: 'auto', overflowX: 'auto' }}>
             {loading ? (
               <ExpensesTableSkeleton />
             ) : expenses.length === 0 ? (
@@ -438,7 +437,7 @@ export default function ExpensesPage() {
                 </TableBody>
               </Table>
             )}
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 

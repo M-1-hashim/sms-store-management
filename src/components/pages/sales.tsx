@@ -288,7 +288,7 @@ export default function SalesPage() {
                 <Input
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
+                  onChange={(e) => { setDateFrom(e.target.value); setPage(1); setSales([]); }}
                   className="w-40 pr-9"
                 />
               </div>
@@ -300,7 +300,7 @@ export default function SalesPage() {
                 <Input
                   type="date"
                   value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
+                  onChange={(e) => { setDateTo(e.target.value); setPage(1); setSales([]); }}
                   className="w-40 pr-9"
                 />
               </div>
@@ -326,7 +326,7 @@ export default function SalesPage() {
                 <Input
                   placeholder="جستجو..."
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); setSales([]); }}
                   className="w-48 pr-9"
                 />
               </div>
@@ -337,8 +337,8 @@ export default function SalesPage() {
 
       {/* Sales Table */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="overflow-y-auto max-h-[520px]">
+        <CardContent className="pt-6 px-0 pb-0">
+          <div style={{ maxHeight: '520px', overflowY: 'auto', overflowX: 'auto' }}>
             {loading ? (
               <SalesTableSkeleton />
             ) : sales.length === 0 ? (
@@ -410,8 +410,8 @@ export default function SalesPage() {
           </div>
 
           {/* Show More */}
-          {hasMore && (
-            <div className="border-t pt-3 mt-3">
+          {!loading && hasMore && (
+            <div className="px-6 py-3 border-t">
               <Button
                 variant="ghost"
                 size="sm"
@@ -433,8 +433,8 @@ export default function SalesPage() {
               </Button>
             </div>
           )}
-          {!hasMore && sales.length > 20 && (
-            <div className="border-t pt-3 mt-3">
+          {!loading && !hasMore && sales.length > 20 && (
+            <div className="px-6 py-3 border-t">
               <p className="text-center text-xs text-muted-foreground">
                 نمایش همه {formatNumber(total)} فاکتور
               </p>

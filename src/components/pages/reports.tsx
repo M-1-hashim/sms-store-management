@@ -18,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   BarChart,
   Bar,
@@ -570,7 +569,7 @@ function SalesReportTab() {
               <p className="text-sm">داده‌ای برای نمایش وجود ندارد</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[380px]">
+            <div style={{ maxHeight: '380px', overflowY: 'auto', overflowX: 'auto' }}>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -589,7 +588,7 @@ function SalesReportTab() {
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -835,7 +834,7 @@ function InventoryReportTab() {
               <p className="text-sm">محصولی برای نمایش وجود ندارد</p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[420px]">
+            <div style={{ maxHeight: '420px', overflowY: 'auto', overflowX: 'auto' }}>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -865,7 +864,7 @@ function InventoryReportTab() {
                   ))}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>

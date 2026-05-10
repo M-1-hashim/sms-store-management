@@ -34,7 +34,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Plus, Edit, Trash2, Phone, Mail, MapPin, Truck } from 'lucide-react'
 
 // --- Types ---
@@ -198,7 +197,7 @@ export default function SuppliersPage() {
       {/* Suppliers Table */}
       <Card>
         <CardContent className="pt-6">
-          <ScrollArea className="max-h-[520px]">
+          <div style={{ maxHeight: '520px', overflowY: 'auto', overflowX: 'auto' }}>
             {loading ? (
               <SuppliersTableSkeleton />
             ) : suppliers.length === 0 ? (
@@ -289,7 +288,7 @@ export default function SuppliersPage() {
                 </TableBody>
               </Table>
             )}
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 

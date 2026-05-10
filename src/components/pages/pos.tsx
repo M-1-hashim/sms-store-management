@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Label } from '@/components/ui/label'
 
@@ -525,7 +524,7 @@ export default function POSPage() {
                 <p className="text-sm">محصولات را از لیست سمت راست اضافه کنید</p>
               </div>
             ) : (
-              <ScrollArea className="max-h-[340px]">
+              <div style={{ maxHeight: '340px', overflowY: 'auto', overflowX: 'auto' }}>
                 <div className="space-y-3">
                   {items.map((item) => (
                     <div
@@ -585,7 +584,7 @@ export default function POSPage() {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             )}
 
             {/* Summary Section */}

@@ -35,7 +35,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User,
@@ -360,7 +359,8 @@ export default function CustomersPage() {
       if (json.success) {
         toast.success(editingCustomer ? 'مشتری با موفقیت ویرایش شد' : 'مشتری جدید با موفقیت اضافه شد')
         setDialogOpen(false)
-        fetchCustomers()
+        setPage(1)
+        fetchCustomers(1)
       } else {
         toast.error(json.error || 'خطا در ذخیره اطلاعات')
       }
@@ -377,7 +377,7 @@ export default function CustomersPage() {
       const json = await res.json()
       if (json.success) {
         toast.success('مشتری با موفقیت حذف شد')
-        fetchCustomers()
+        fetchCustomers(1)
       } else {
         toast.error(json.error || 'خطا در حذف مشتری')
       }
@@ -478,7 +478,7 @@ export default function CustomersPage() {
             <Input
               placeholder="جستجو بر اساس نام یا شماره تلفن..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); setCustomers([]); }}
               className="pr-9"
             />
           </div>
@@ -487,8 +487,8 @@ export default function CustomersPage() {
 
       {/* ═══ Customers Table ═══ */}
       <Card className="hover:shadow-md transition-shadow">
-        <CardContent className="pt-6">
-          <div className="overflow-y-auto max-h-[560px]">
+        <CardContent className="pt-6 px-0 pb-0">
+          <div style={{ maxHeight: '560px', overflowY: 'auto', overflowX: 'auto' }}>
             {loading ? (
               <CustomersTableSkeleton />
             ) : customers.length === 0 ? (
@@ -598,8 +598,8 @@ export default function CustomersPage() {
           </div>
 
           {/* Show More */}
-          {hasMore && (
-            <div className="border-t pt-3 mt-3">
+          {!loading && hasMore && (
+            <div className="px-6 py-3 border-t">
               <Button
                 variant="ghost"
                 size="sm"
@@ -621,8 +621,8 @@ export default function CustomersPage() {
               </Button>
             </div>
           )}
-          {!hasMore && customers.length > 20 && (
-            <div className="border-t pt-3 mt-3">
+          {!loading && !hasMore && customers.length > 20 && (
+            <div className="px-6 py-3 border-t">
               <p className="text-center text-xs text-muted-foreground">
                 نمایش همه {formatNumber(total)} مشتری
               </p>
