@@ -676,6 +676,49 @@ export default function DashboardPage() {
 
         {/* Right Sidebar Cards */}
         <div className="space-y-4">
+          {/* Top Products Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                  <Trophy className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">پرفروش‌ترین‌ها</CardTitle>
+                  <CardDescription className="text-xs">بر اساس تعداد فروش</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {data.topSellingProducts.slice(0, 5).map((product, index) => {
+                  const maxQty = data.topSellingProducts[0]?.totalQuantity || 1
+                  const percentage = (product.totalQuantity / maxQty) * 100
+                  const barColors = ['bg-rose-500', 'bg-cyan-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500']
+                  return (
+                    <div key={product.productId} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white bg-muted-foreground">
+                            {toFarsi(index + 1)}
+                          </span>
+                          <span className="text-xs font-medium truncate max-w-[120px]">{product.productName}</span>
+                        </div>
+                        <span className="text-xs font-semibold">{toFarsi(product.totalQuantity)}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={cn('h-full rounded-full transition-all duration-500', barColors[index])}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Low Stock Alert */}
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
@@ -803,49 +846,6 @@ export default function DashboardPage() {
                   </div>
                 </ScrollArea>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Top Products Card */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
-                  <Trophy className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-base font-semibold">پرفروش‌ترین‌ها</CardTitle>
-                  <CardDescription className="text-xs">بر اساس تعداد فروش</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {data.topSellingProducts.slice(0, 5).map((product, index) => {
-                  const maxQty = data.topSellingProducts[0]?.totalQuantity || 1
-                  const percentage = (product.totalQuantity / maxQty) * 100
-                  const barColors = ['bg-rose-500', 'bg-cyan-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500']
-                  return (
-                    <div key={product.productId} className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white bg-muted-foreground">
-                            {toFarsi(index + 1)}
-                          </span>
-                          <span className="text-xs font-medium truncate max-w-[120px]">{product.productName}</span>
-                        </div>
-                        <span className="text-xs font-semibold">{toFarsi(product.totalQuantity)}</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={cn('h-full rounded-full transition-all duration-500', barColors[index])}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
             </CardContent>
           </Card>
 
