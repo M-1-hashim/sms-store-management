@@ -52,3 +52,31 @@ Stage Summary:
 - Images display across Dashboard (hero card, recent sales table), Customers page (table, dialog), and POS (customer selector)
 - Database schema updated with `image` column on Customer model
 - All API routes handle image create/update correctly
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix dashboard هشدار موجودی (Stock Alert) card + regenerate Prisma client
+
+Work Log:
+- Investigated stock alert card issues: UI was confusing (count showed 6 but only 5 displayed), no severity indication, no progress bars, missing "and X more" indicator
+- Rewrote the entire Low Stock Alert card section in `src/components/pages/dashboard.tsx`:
+  - Added 3-level severity system: red (out of stock, stock=0), orange (critical, stock<=30% of minStock), amber (low stock)
+  - Added animated pulse dot for out-of-stock items
+  - Added progress bars showing stock/minStock ratio
+  - Added descriptive labels: "نیاز به سفارش فوری" (urgent reorder), "نیاز به سفارش" (reorder needed), "موجودی کم" (low stock)
+  - Shows minStock threshold alongside current stock
+  - Added destructive badge with count in header (with pulse dot if any items are out of stock)
+  - Added "و X محصول دیگر در وضعیت هشدار" indicator when more than 5 items exist
+  - Green icon when all stock is sufficient, red when alerts exist
+  - Context-aware description text
+- Fixed SWC parser error caused by JSX comment between `.map()` and conditional expression
+- Regenerated Prisma client (`prisma generate`) to recognize the `image` column on Customer model
+- Verified customer image upload works end-to-end via API test
+- Restarted dev server to pick up new Prisma client
+- All lint checks pass clean
+
+Stage Summary:
+- Stock Alert card completely redesigned with severity levels, progress bars, and better UX
+- Prisma client regenerated — customer image field now fully functional across all APIs
+- Both issues resolved: dashboard stock card improved, customer image upload confirmed working

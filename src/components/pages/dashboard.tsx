@@ -681,16 +681,37 @@ export default function DashboardPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/40">
-                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <div className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-lg',
+                    data.lowStockCount > 0
+                      ? 'bg-red-100 dark:bg-red-900/40'
+                      : 'bg-emerald-100 dark:bg-emerald-900/40'
+                  )}>
+                    <AlertTriangle className={cn(
+                      'h-4 w-4',
+                      data.lowStockCount > 0
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-emerald-600 dark:text-emerald-400'
+                    )} />
                   </div>
                   <div>
                     <CardTitle className="text-base font-semibold">هشدار موجودی</CardTitle>
                     <CardDescription className="text-xs">
-                      {toFarsi(data.lowStockCount)} محصول
+                      {data.lowStockCount > 0
+                        ? `${toFarsi(data.lowStockCount)} محصول در وضعیت هشدار`
+                        : 'موجودی تمام محصولات کافی است'
+                      }
                     </CardDescription>
                   </div>
                 </div>
+                {data.lowStockCount > 0 && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5">
+                    {data.lowStockProducts.filter((p) => (p as LowStockProduct).stock === 0).length > 0 && (
+                      <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    )}
+                    {toFarsi(data.lowStockCount)}
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -700,40 +721,93 @@ export default function DashboardPage() {
                   <p className="text-xs">موجودی کافی</p>
                 </div>
               ) : (
-                <ScrollArea className="max-h-48">
-                  <div className="space-y-2">
-                    {(data.lowStockProducts as LowStockProduct[]).slice(0, 5).map((product) => {
-                      const isOutOfStock = product.stock === 0
-                      return (
-                        <div
-                          key={product.id}
-                          className={cn(
-                            'flex items-center justify-between rounded-lg border p-2.5 transition-colors',
-                            isOutOfStock
-                              ? 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20'
-                              : 'border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'
-                          )}
-                        >
+                <div className="space-y-2.5">
+                  {(data.lowStockProducts as LowStockProduct[]).slice(0, 5).map((product) => {
+                    const isOutOfStock = product.stock === 0
+                    const isCritical = product.stock === 0 || product.stock <= Math.floor(product.minStock * 0.3)
+                    const stockRatio = product.minStock > 0 ? Math.min((product.stock / product.minStock) * 100, 100) : 0
+                    const stockPercent = Math.round(stockRatio)
+
+                    return (
+                      <div
+                        key={product.id}
+                        className={cn(
+                          'rounded-xl border p-3 transition-colors',
+                          isOutOfStock
+                            ? 'border-red-200 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/30'
+                            : isCritical
+                            ? 'border-orange-200 bg-orange-50/60 dark:border-orange-900/50 dark:bg-orange-950/30'
+                            : 'border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/30'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium">{product.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{product.sku}</p>
+                            <div className="flex items-center gap-1.5">
+                              {isOutOfStock && (
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
+                              )}
+                              <p className="truncate text-xs font-semibold">{product.name}</p>
+                            </div>
+                            <p className="mt-0.5 text-[10px] text-muted-foreground">کد: {product.sku}</p>
                           </div>
                           <Badge
                             variant="outline"
                             className={cn(
-                              'text-[10px] shrink-0',
+                              'text-[10px] shrink-0 px-1.5 py-0',
                               isOutOfStock
-                                ? 'border-red-300 text-red-600'
-                                : 'border-amber-300 text-amber-600'
+                                ? 'border-red-300 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/60 dark:text-red-400'
+                                : isCritical
+                                ? 'border-orange-300 bg-orange-100 text-orange-700 dark:border-orange-800 dark:bg-orange-900/60 dark:text-orange-400'
+                                : 'border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/60 dark:text-amber-400'
                             )}
                           >
-                            {isOutOfStock ? 'ناموجود' : `${toFarsi(product.stock)}`}
+                            {isOutOfStock ? 'ناموجود' : `${toFarsi(product.stock)} عدد`}
                           </Badge>
                         </div>
-                      )
-                    })}
-                  </div>
-                </ScrollArea>
+
+                        {/* Progress bar */}
+                        <div className="mt-2 space-y-1">
+                          <div className="h-1.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full transition-all duration-500',
+                                isOutOfStock
+                                  ? 'bg-red-500'
+                                  : isCritical
+                                  ? 'bg-orange-500'
+                                  : 'bg-amber-500'
+                              )}
+                              style={{ width: `${stockPercent}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className={cn(
+                              'text-[10px] font-medium',
+                              isOutOfStock
+                                ? 'text-red-600 dark:text-red-400'
+                                : isCritical
+                                ? 'text-orange-600 dark:text-orange-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            )}>
+                              {isOutOfStock ? 'نیاز به سفارش فوری' : stockPercent <= 50 ? 'نیاز به سفارش' : 'موجودی کم'}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              حداقل: {toFarsi(product.minStock)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {data.lowStockCount > 5 && (
+                    <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/30 px-3 py-2 text-center">
+                      <p className="text-[11px] text-muted-foreground">
+                        و <span className="font-semibold text-foreground">{toFarsi(data.lowStockCount - 5)}</span> محصول دیگر در وضعیت هشدار
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
