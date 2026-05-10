@@ -178,13 +178,13 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">کل محصولات</p>
-                <p className="mt-1 text-3xl font-bold tabular-nums">
+                <div className="mt-1 text-3xl font-bold tabular-nums">
                   {loading ? (
                     <Skeleton className="h-8 w-12" />
                   ) : (
                     formatNumber(totalProducts)
                   )}
-                </p>
+                </div>
               </div>
               <div className="flex size-12 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
                 <Package className="size-6 text-blue-600 dark:text-blue-400" />
@@ -199,13 +199,13 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">موجودی کم</p>
-                <p className="mt-1 text-3xl font-bold tabular-nums">
+                <div className="mt-1 text-3xl font-bold tabular-nums">
                   {loading ? (
                     <Skeleton className="h-8 w-12" />
                   ) : (
                     formatNumber(lowStockProducts.length)
                   )}
-                </p>
+                </div>
               </div>
               <div className="flex size-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
                 <AlertTriangle className="size-6 text-amber-600 dark:text-amber-400" />
@@ -225,13 +225,13 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">ناموجود</p>
-                <p className="mt-1 text-3xl font-bold tabular-nums">
+                <div className="mt-1 text-3xl font-bold tabular-nums">
                   {loading ? (
                     <Skeleton className="h-8 w-12" />
                   ) : (
                     formatNumber(outOfStockProducts.length)
                   )}
-                </p>
+                </div>
               </div>
               <div className="flex size-12 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30">
                 <PackageX className="size-6 text-red-600 dark:text-red-400" />
@@ -251,13 +251,13 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">ارزش کل موجودی</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums">
+                <div className="mt-1 text-2xl font-bold tabular-nums">
                   {loading ? (
                     <Skeleton className="h-7 w-28" />
                   ) : (
                     formatPrice(totalInventoryValue)
                   )}
-                </p>
+                </div>
               </div>
               <div className="flex size-12 items-center justify-center rounded-xl bg-green-100 dark:bg-green-900/30">
                 <DollarSign className="size-6 text-green-600 dark:text-green-400" />
