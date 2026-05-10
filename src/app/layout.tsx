@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "سیستم مدریتی فروشگاه",
   description: "سیستم جامع مدیریت فروشگاه - مدیریت موجودی، فروش، مشتریان و گزارش‌ها",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.svg",
   },
 };
 
