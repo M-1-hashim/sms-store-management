@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server'
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync, copyFileSync, resolve } from 'fs'
-import { join } from 'path'
+import { readFileSync, unlinkSync, existsSync, mkdirSync, cpSync, readdirSync, statSync, resolve } from 'fs'
+import { join, dirname } from 'path'
 import { writeFile, readFile } from 'fs/promises'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/validate-auth'
 
-const DB_PATH = join(process.cwd(), 'db', 'custom.db')
-const BACKUP_DIR = join(process.cwd(), 'db', 'backups')
+// Resolve actual DB path from DATABASE_URL
+function getDbPath(): string {
+  const dbUrl = process.env.DATABASE_URL || ''
+  // Handle file:./db/custom.db or file:/absolute/path/db/custom.db
+  const filePath = dbUrl.replace(/^file:/, '')
+  if (filePath.startsWith('/')) {
+    return filePath // absolute path
+  }
+  // Relative path - resolve from project root
+  return join(process.cwd(), filePath)
+}
+
+const DB_PATH = getDbPath()
+const BACKUP_DIR = join(dirname(DB_PATH), 'backups')
 
 function ensureBackupDir() {
   if (!existsSync(BACKUP_DIR)) {
