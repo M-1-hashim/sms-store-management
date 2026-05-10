@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,7 +39,6 @@ import {
   Trash2,
   RotateCcw,
   ImageIcon,
-  CheckCircle,
   Loader2,
   Shield,
   Phone,
@@ -51,10 +50,14 @@ import {
   Layers,
   AlertTriangle,
   RefreshCw,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 // --- Types ---
-interface Settings {
+interface SettingsData {
   id: string
   storeName: string
   storeNameEn: string
@@ -73,6 +76,20 @@ interface BackupFile {
   filename: string
   size: string
   date: string
+}
+
+type FormDataType = {
+  storeName: string
+  storeNameEn: string
+  address: string
+  phone: string
+  email: string
+  logo: string | null
+  taxNumber: string
+  invoicePrefix: string
+  invoiceFooter: string
+  currency: string
+  itemsPerPage: number
 }
 
 // --- Skeleton ---
@@ -103,7 +120,10 @@ function SettingsSkeleton() {
 
 // --- Main Component ---
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const { theme, setTheme } = useTheme()
+  const themeMounted = useSyncExternalStore(() => () => {}, () => true, () => false)
+
+  const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [backups, setBackups] = useState<BackupFile[]>([])
@@ -113,14 +133,13 @@ export default function SettingsPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataType>({
     storeName: '',
     storeNameEn: '',
     address: '',
     phone: '',
     email: '',
-    logo: null as string | null,
+    logo: null,
     taxNumber: '',
     invoicePrefix: '',
     invoiceFooter: '',
@@ -128,7 +147,7 @@ export default function SettingsPage() {
     itemsPerPage: 20,
   })
 
-  const originalData = useRef(formData)
+  const originalData = useRef<FormDataType>(formData)
 
   // Fetch settings
   useEffect(() => {
@@ -137,9 +156,9 @@ export default function SettingsPage() {
         const res = await fetch('/api/settings')
         const json = await res.json()
         if (json.success && json.data) {
-          const s = json.data as Settings
+          const s = json.data as SettingsData
           setSettings(s)
-          const fd = {
+          const fd: FormDataType = {
             storeName: s.storeName,
             storeNameEn: s.storeNameEn,
             address: s.address,
@@ -166,22 +185,22 @@ export default function SettingsPage() {
 
   // Check for changes
   useEffect(() => {
+    const c = originalData.current
     const changed =
-      formData.storeName !== originalData.current.storeName ||
-      formData.storeNameEn !== originalData.current.storeNameEn ||
-      formData.address !== originalData.current.address ||
-      formData.phone !== originalData.current.phone ||
-      formData.email !== originalData.current.email ||
-      formData.logo !== originalData.current.logo ||
-      formData.taxNumber !== originalData.current.taxNumber ||
-      formData.invoicePrefix !== originalData.current.invoicePrefix ||
-      formData.invoiceFooter !== originalData.current.invoiceFooter ||
-      formData.currency !== originalData.current.currency ||
-      formData.itemsPerPage !== originalData.current.itemsPerPage
+      formData.storeName !== c.storeName ||
+      formData.storeNameEn !== c.storeNameEn ||
+      formData.address !== c.address ||
+      formData.phone !== c.phone ||
+      formData.email !== c.email ||
+      formData.logo !== c.logo ||
+      formData.taxNumber !== c.taxNumber ||
+      formData.invoicePrefix !== c.invoicePrefix ||
+      formData.invoiceFooter !== c.invoiceFooter ||
+      formData.currency !== c.currency ||
+      formData.itemsPerPage !== c.itemsPerPage
     setHasChanges(changed)
   }, [formData])
 
-  // Save settings
   const handleSave = async () => {
     try {
       setSaving(true)
@@ -193,8 +212,7 @@ export default function SettingsPage() {
       const json = await res.json()
       if (json.success) {
         toast.success('تنظیمات با موفقیت ذخیره شد')
-        const s = json.data as Settings
-        setSettings(s)
+        setSettings(json.data as SettingsData)
         originalData.current = { ...formData }
         setHasChanges(false)
       } else {
@@ -207,47 +225,23 @@ export default function SettingsPage() {
     }
   }
 
-  // Reset changes
-  const handleReset = () => {
-    setFormData({ ...originalData.current })
-  }
+  const handleReset = () => setFormData({ ...originalData.current })
 
-  // Logo upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('حجم فایل نباید بیشتر از ۲ مگابایت باشد')
-      return
-    }
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('لطفاً فقط فایل تصویری انتخاب کنید')
-      return
-    }
-
+    if (file.size > 2 * 1024 * 1024) { toast.error('حجم فایل نباید بیشتر از ۲ مگابایت باشد'); return }
+    if (!file.type.startsWith('image/')) { toast.error('لطفاً فقط فایل تصویری انتخاب کنید'); return }
     const reader = new FileReader()
     reader.onload = (event) => {
       const img = new Image()
       img.onload = () => {
-        // Resize to max 200x200
         const canvas = document.createElement('canvas')
         const maxSize = 200
         let { width, height } = img
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width
-            width = maxSize
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height
-            height = maxSize
-          }
-        }
-        canvas.width = width
-        canvas.height = height
+        if (width > height) { if (width > maxSize) { height = (height * maxSize) / width; width = maxSize } }
+        else { if (height > maxSize) { width = (width * maxSize) / height; height = maxSize } }
+        canvas.width = width; canvas.height = height
         const ctx = canvas.getContext('2d')
         ctx?.drawImage(img, 0, 0, width, height)
         const compressed = canvas.toDataURL('image/jpeg', 0.8)
@@ -261,28 +255,19 @@ export default function SettingsPage() {
 
   const removeLogo = () => {
     setFormData((prev) => ({ ...prev, logo: null }))
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  // Fetch backups
   const fetchBackups = useCallback(async () => {
     try {
       setLoadingBackups(true)
       const res = await fetch('/api/backup')
       const json = await res.json()
-      if (json.success) {
-        setBackups(json.data || [])
-      }
-    } catch {
-      toast.error('خطا در دریافت لیست پشتیبان‌ها')
-    } finally {
-      setLoadingBackups(false)
-    }
+      if (json.success) setBackups(json.data || [])
+    } catch { toast.error('خطا در دریافت لیست پشتیبان‌ها') }
+    finally { setLoadingBackups(false) }
   }, [])
 
-  // Create backup
   const handleCreateBackup = async () => {
     try {
       setCreatingBackup(true)
@@ -292,20 +277,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ action: 'create' }),
       })
       const json = await res.json()
-      if (json.success) {
-        toast.success(json.message || 'پشتیبان ایجاد شد')
-        fetchBackups()
-      } else {
-        toast.error(json.error || 'خطا در ایجاد پشتیبان')
-      }
-    } catch {
-      toast.error('خطا در ارتباط با سرور')
-    } finally {
-      setCreatingBackup(false)
-    }
+      if (json.success) { toast.success(json.message || 'پشتیبان ایجاد شد'); fetchBackups() }
+      else toast.error(json.error || 'خطا در ایجاد پشتیبان')
+    } catch { toast.error('خطا در ارتباط با سرور') }
+    finally { setCreatingBackup(false) }
   }
 
-  // Restore backup
   const handleRestoreBackup = async (filename: string) => {
     try {
       const res = await fetch('/api/backup', {
@@ -315,48 +292,27 @@ export default function SettingsPage() {
       })
       const json = await res.json()
       if (json.success) {
-        toast.success(json.message, {
-          description: 'صفحه به زودی رفرش می‌شود...',
-          duration: 3000,
-        })
+        toast.success(json.message, { description: 'صفحه به زودی رفرش می‌شود...', duration: 3000 })
         setTimeout(() => window.location.reload(), 2500)
-      } else {
-        toast.error(json.error || 'خطا در بازیابی')
-      }
-    } catch {
-      toast.error('خطا در ارتباط با سرور')
-    }
+      } else toast.error(json.error || 'خطا در بازیابی')
+    } catch { toast.error('خطا در ارتباط با سرور') }
   }
 
-  // Delete backup
   const handleDeleteBackup = async (filename: string) => {
     try {
       const res = await fetch(`/api/backup?action=delete&file=${encodeURIComponent(filename)}`)
       const json = await res.json()
-      if (json.success) {
-        toast.success('پشتیبان حذف شد')
-        fetchBackups()
-      } else {
-        toast.error(json.error || 'خطا در حذف')
-      }
-    } catch {
-      toast.error('خطا در ارتباط با سرور')
-    }
+      if (json.success) { toast.success('پشتیبان حذف شد'); fetchBackups() }
+      else toast.error(json.error || 'خطا در حذف')
+    } catch { toast.error('خطا در ارتباط با سرور') }
   }
 
-  // Download backup
   const handleDownloadBackup = (filename: string) => {
     window.open(`/api/backup?action=download&file=${encodeURIComponent(filename)}`, '_blank')
   }
 
-  // Load backups when backup tab is opened
-  useEffect(() => {
-    if (activeTab === 'backup') {
-      fetchBackups()
-    }
-  }, [activeTab, fetchBackups])
+  useEffect(() => { if (activeTab === 'backup') fetchBackups() }, [activeTab, fetchBackups])
 
-  // Tab definitions
   const tabs = [
     { id: 'store' as const, label: 'اطلاعات فروشگاه', icon: Store, color: 'text-violet-500' },
     { id: 'invoice' as const, label: 'تنظیمات فاکتور', icon: FileText, color: 'text-amber-500' },
@@ -386,18 +342,13 @@ export default function SettingsPage() {
               بازنشانی
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving} className="gap-2">
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               ذخیره تغییرات
             </Button>
           </div>
         )}
       </div>
 
-      {/* Unsaved changes warning */}
       {hasChanges && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
           <AlertTriangle className="h-5 w-5 shrink-0" />
@@ -427,7 +378,7 @@ export default function SettingsPage() {
         })}
       </div>
 
-      {/* Store Info Tab */}
+      {/* ==================== STORE INFO TAB ==================== */}
       {activeTab === 'store' && (
         <Card>
           <CardHeader>
@@ -440,7 +391,7 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Logo Section */}
+            {/* Logo */}
             <div>
               <Label className="text-sm font-medium">لوگو فروشگاه</Label>
               <p className="text-xs text-muted-foreground mb-3">
@@ -449,141 +400,79 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 {formData.logo ? (
                   <div className="relative group">
-                    <img
-                      src={formData.logo}
-                      alt="لوگو"
-                      className="h-20 w-20 rounded-xl border-2 border-border object-cover"
-                    />
-                    <button
-                      onClick={removeLogo}
-                      className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                    >
+                    <img src={formData.logo} alt="لوگو" className="h-20 w-20 rounded-xl border-2 border-border object-cover" />
+                    <button onClick={removeLogo} className="absolute -top-2 -left-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100">
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 transition-colors hover:border-primary hover:bg-primary/5"
-                  >
+                  <div onClick={() => fileInputRef.current?.click()} className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 transition-colors hover:border-primary hover:bg-primary/5">
                     <ImageIcon className="h-6 w-6 text-muted-foreground" />
                     <span className="text-[10px] text-muted-foreground mt-1">آپلود</span>
                   </div>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="gap-2"
-                >
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
                   <Upload className="h-4 w-4" />
                   {formData.logo ? 'تغییر لوگو' : 'انتخاب لوگو'}
                 </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                />
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
               </div>
             </div>
 
             <Separator />
 
-            {/* Store Name */}
+            {/* Store Names */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="storeName" className="flex items-center gap-2">
                   <Store className="h-4 w-4 text-muted-foreground" />
                   نام فروشگاه (دری/پشتو)
                 </Label>
-                <Input
-                  id="storeName"
-                  value={formData.storeName}
-                  onChange={(e) => setFormData((p) => ({ ...p, storeName: e.target.value }))}
-                  placeholder="مثلاً: فروشگاه نور"
-                />
+                <Input id="storeName" value={formData.storeName} onChange={(e) => setFormData((p) => ({ ...p, storeName: e.target.value }))} placeholder="مثلاً: فروشگاه نور" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="storeNameEn" className="flex items-center gap-2">
                   <Store className="h-4 w-4 text-muted-foreground" />
                   نام فروشگاه (انگلیسی)
                 </Label>
-                <Input
-                  id="storeNameEn"
-                  value={formData.storeNameEn}
-                  onChange={(e) => setFormData((p) => ({ ...p, storeNameEn: e.target.value }))}
-                  placeholder="e.g. Noor Store"
-                  dir="ltr"
-                />
+                <Input id="storeNameEn" value={formData.storeNameEn} onChange={(e) => setFormData((p) => ({ ...p, storeNameEn: e.target.value }))} placeholder="e.g. Noor Store" dir="ltr" />
               </div>
             </div>
 
-            {/* Contact Info */}
+            {/* Contact */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  شماره تلفن
+                  <Phone className="h-4 w-4 text-muted-foreground" /> شماره تلفن
                 </Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                  placeholder="۰۷۷۰۰۰۰۰۰۰"
-                  dir="ltr"
-                />
+                <Input id="phone" value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} placeholder="۰۷۷۰۰۰۰۰۰۰" dir="ltr" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  ایمیل
+                  <Mail className="h-4 w-4 text-muted-foreground" /> ایمیل
                 </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                  placeholder="info@store.com"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  آدرس
-                </Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))}
-                  placeholder="آدرس فروشگاه خود را وارد کنید"
-                  rows={2}
-                />
+                <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} placeholder="info@store.com" dir="ltr" />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="taxNumber" className="flex items-center gap-2">
-                <Hash className="h-4 w-4 text-muted-foreground" />
-                شماره مالیاتی / جواز کسب (اختیاری)
+              <Label htmlFor="address" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" /> آدرس
               </Label>
-              <Input
-                id="taxNumber"
-                value={formData.taxNumber}
-                onChange={(e) => setFormData((p) => ({ ...p, taxNumber: e.target.value }))}
-                placeholder="شماره ثبت یا مالیاتی"
-              />
+              <Textarea id="address" value={formData.address} onChange={(e) => setFormData((p) => ({ ...p, address: e.target.value }))} placeholder="آدرس فروشگاه خود را وارد کنید" rows={2} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="taxNumber" className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-muted-foreground" /> شماره مالیاتی / جواز کسب (اختیاری)
+              </Label>
+              <Input id="taxNumber" value={formData.taxNumber} onChange={(e) => setFormData((p) => ({ ...p, taxNumber: e.target.value }))} placeholder="شماره ثبت یا مالیاتی" />
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Invoice Settings Tab */}
+      {/* ==================== INVOICE TAB ==================== */}
       {activeTab === 'invoice' && (
         <Card>
           <CardHeader>
@@ -591,40 +480,23 @@ export default function SettingsPage() {
               <FileText className="h-5 w-5 text-amber-500" />
               تنظیمات فاکتور
             </CardTitle>
-            <CardDescription>
-              تنظیمات مربوط به ظاهر و محتوای فاکتور فروش را تغییر دهید.
-            </CardDescription>
+            <CardDescription>تنظیمات مربوط به ظاهر و محتوای فاکتور فروش را تغییر دهید.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="invoicePrefix" className="flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  پیشوند شماره فاکتور
+                  <Hash className="h-4 w-4 text-muted-foreground" /> پیشوند شماره فاکتور
                 </Label>
-                <Input
-                  id="invoicePrefix"
-                  value={formData.invoicePrefix}
-                  onChange={(e) => setFormData((p) => ({ ...p, invoicePrefix: e.target.value }))}
-                  placeholder="INV"
-                  dir="ltr"
-                />
-                <p className="text-xs text-muted-foreground">
-                  شماره فاکتور به صورت: {formData.invoicePrefix}-۰۰۱ تولید می‌شود
-                </p>
+                <Input id="invoicePrefix" value={formData.invoicePrefix} onChange={(e) => setFormData((p) => ({ ...p, invoicePrefix: e.target.value }))} placeholder="INV" dir="ltr" />
+                <p className="text-xs text-muted-foreground">شماره فاکتور به صورت: {formData.invoicePrefix}-۰۰۱ تولید می‌شود</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency" className="flex items-center gap-2">
-                  <Coins className="h-4 w-4 text-muted-foreground" />
-                  واحد پول
+                  <Coins className="h-4 w-4 text-muted-foreground" /> واحد پول
                 </Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(v) => setFormData((p) => ({ ...p, currency: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.currency} onValueChange={(v) => setFormData((p) => ({ ...p, currency: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="افغانی">افغانی (AFN)</SelectItem>
                     <SelectItem value="دلار">دلار (USD)</SelectItem>
@@ -632,9 +504,7 @@ export default function SettingsPage() {
                     <SelectItem value="ریال">ریال (R)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  واحد پول در فاکتور و گزارش‌ها نمایش داده می‌شود
-                </p>
+                <p className="text-xs text-muted-foreground">واحد پول در فاکتور و گزارش‌ها نمایش داده می‌شود</p>
               </div>
             </div>
 
@@ -642,23 +512,15 @@ export default function SettingsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="invoiceFooter" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                متن فوتر فاکتور
+                <MessageSquare className="h-4 w-4 text-muted-foreground" /> متن فوتر فاکتور
               </Label>
-              <Textarea
-                id="invoiceFooter"
-                value={formData.invoiceFooter}
-                onChange={(e) => setFormData((p) => ({ ...p, invoiceFooter: e.target.value }))}
-                placeholder="متن پایین فاکتور..."
-                rows={3}
-              />
-              <p className="text-xs text-muted-foreground">
-                این متن در پایین فاکتور چاپی نمایش داده می‌شود
-              </p>
+              <Textarea id="invoiceFooter" value={formData.invoiceFooter} onChange={(e) => setFormData((p) => ({ ...p, invoiceFooter: e.target.value }))} placeholder="متن پایین فاکتور..." rows={3} />
+              <p className="text-xs text-muted-foreground">این متن در پایین فاکتور چاپی نمایش داده می‌شود</p>
             </div>
 
-            {/* Invoice Preview */}
             <Separator />
+
+            {/* Invoice Preview */}
             <div>
               <h3 className="text-sm font-medium mb-3">پیش‌نمایش فاکتور</h3>
               <div className="rounded-xl border bg-muted/30 p-6 max-w-md">
@@ -683,7 +545,7 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Display Settings Tab */}
+      {/* ==================== DISPLAY TAB ==================== */}
       {activeTab === 'display' && (
         <Card>
           <CardHeader>
@@ -691,23 +553,66 @@ export default function SettingsPage() {
               <Palette className="h-5 w-5 text-cyan-500" />
               تنظیمات نمایش
             </CardTitle>
-            <CardDescription>
-              تنظیمات مربوط به نحوه نمایش اطلاعات در سیستم را تغییر دهید.
-            </CardDescription>
+            <CardDescription>تنظیمات مربوط به نحوه نمایش اطلاعات در سیستم را تغییر دهید.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Theme Selection */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2 text-sm font-medium">
+                <Sun className="h-4 w-4 text-muted-foreground" />
+                حالت نمایش (تم)
+              </Label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all hover:shadow-sm ${
+                    theme === 'light' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
+                    <Sun className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <span className="text-xs font-medium">روشن</span>
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all hover:shadow-sm ${
+                    theme === 'dark' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
+                    <Moon className="h-5 w-5 text-slate-200" />
+                  </div>
+                  <span className="text-xs font-medium">تاریک</span>
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all hover:shadow-sm ${
+                    theme === 'system' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-amber-100 to-slate-800">
+                    <Monitor className="h-5 w-5 text-foreground" />
+                  </div>
+                  <span className="text-xs font-medium">سیستم</span>
+                </button>
+              </div>
+              {themeMounted && (
+                <p className="text-xs text-muted-foreground">
+                  تم فعلی: {theme === 'light' ? 'روشن ☀️' : theme === 'dark' ? 'تاریک 🌙' : 'هماهنگ با سیستم 🖥️'}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Items Per Page */}
             <div className="space-y-2">
               <Label htmlFor="itemsPerPage" className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-muted-foreground" />
-                تعداد آیتم در هر صفحه
+                <Layers className="h-4 w-4 text-muted-foreground" /> تعداد آیتم در هر صفحه
               </Label>
-              <Select
-                value={String(formData.itemsPerPage)}
-                onValueChange={(v) => setFormData((p) => ({ ...p, itemsPerPage: parseInt(v, 10) }))}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={String(formData.itemsPerPage)} onValueChange={(v) => setFormData((p) => ({ ...p, itemsPerPage: parseInt(v, 10) }))}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="10">۱۰ آیتم</SelectItem>
                   <SelectItem value="20">۲۰ آیتم</SelectItem>
@@ -715,9 +620,7 @@ export default function SettingsPage() {
                   <SelectItem value="100">۱۰۰ آیتم</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                تعداد آیتم‌های نمایش داده شده در لیست‌ها و جداول
-              </p>
+              <p className="text-xs text-muted-foreground">تعداد آیتم‌های نمایش داده شده در لیست‌ها و جداول</p>
             </div>
 
             <Separator />
@@ -725,8 +628,7 @@ export default function SettingsPage() {
             {/* System Info */}
             <div>
               <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                اطلاعات سیستم
+                <Shield className="h-4 w-4 text-muted-foreground" /> اطلاعات سیستم
               </h3>
               <div className="rounded-lg border bg-muted/30 divide-y">
                 <div className="flex items-center justify-between px-4 py-3">
@@ -747,58 +649,39 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      {/* Backup Tab */}
+      {/* ==================== BACKUP TAB ==================== */}
       {activeTab === 'backup' && (
         <div className="space-y-6">
-          {/* Create Backup */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5 text-rose-500" />
                 پشتیبان‌گیری و بازیابی
               </CardTitle>
-              <CardDescription>
-                از اطلاعات فروشگاه خود پشتیبان بگیرید و در صورت نیاز آن را بازیابی کنید.
-              </CardDescription>
+              <CardDescription>از اطلاعات فروشگاه خود پشتیبان بگیرید و در صورت نیاز آن را بازیابی کنید.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  onClick={handleCreateBackup}
-                  disabled={creatingBackup}
-                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {creatingBackup ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
+                <Button onClick={handleCreateBackup} disabled={creatingBackup} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                  {creatingBackup ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {creatingBackup ? 'در حال ایجاد...' : 'ایجاد پشتیبان جدید'}
                 </Button>
-                <p className="text-sm text-muted-foreground self-center">
-                  از تمام دیتابیس یک نسخه پشتیبان ایجاد کنید
-                </p>
+                <p className="text-sm text-muted-foreground self-center">از تمام دیتابیس یک نسخه پشتیبان ایجاد کنید</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Backup List */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">نسخه‌های پشتیبان</CardTitle>
-              <CardDescription>
-                لیست تمام فایل‌های پشتیبان موجود
-              </CardDescription>
+              <CardDescription>لیست تمام فایل‌های پشتیبان موجود</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingBackups ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="flex items-center justify-between rounded-lg border p-3">
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-48" />
-                        <Skeleton className="h-3 w-32" />
-                      </div>
+                      <div className="space-y-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-3 w-32" /></div>
                       <Skeleton className="h-8 w-24" />
                     </div>
                   ))}
@@ -812,10 +695,7 @@ export default function SettingsPage() {
               ) : (
                 <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="space-y-2">
                   {backups.map((backup) => (
-                    <div
-                      key={backup.filename}
-                      className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30"
-                    >
+                    <div key={backup.filename} className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                           <Database className="h-5 w-5 text-muted-foreground" />
@@ -823,34 +703,18 @@ export default function SettingsPage() {
                         <div>
                           <p className="text-sm font-medium" dir="ltr">{backup.filename}</p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(backup.date).toLocaleDateString('fa-AF', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}{' '}
-                            · {backup.size}
+                            {new Date(backup.date).toLocaleDateString('fa-AF', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {backup.size}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownloadBackup(backup.filename)}
-                          className="gap-1 h-8"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadBackup(backup.filename)} className="gap-1 h-8">
                           <Download className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">دانلود</span>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            >
+                            <Button variant="outline" size="sm" className="gap-1 h-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50">
                               <RefreshCw className="h-3.5 w-3.5" />
                               <span className="hidden sm:inline">بازیابی</span>
                             </Button>
@@ -858,25 +722,19 @@ export default function SettingsPage() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                                بازیابی پشتیبان
+                                <AlertTriangle className="h-5 w-5 text-amber-500" /> بازیابی پشتیبان
                               </AlertDialogTitle>
                               <AlertDialogDescription dir="rtl">
-                                آیا مطمئن هستید که می‌خواهید از فایل پشتیبان{' '}
-                                <strong dir="ltr">{backup.filename}</strong> بازیابی کنید؟
+                                آیا مطمئن هستید که می‌خواهید از فایل پشتیبان <strong dir="ltr">{backup.filename}</strong> بازیابی کنید؟
                                 <br />
                                 <span className="text-amber-600 font-medium">
-                                  ⚠️ توجه: تمام اطلاعات فعلی با این پشتیبان جایگزین می‌شود.
-                                  یک نسخه پشتیبان از وضعیت فعلی به صورت خودکار ایجاد خواهد شد.
+                                  ⚠️ توجه: تمام اطلاعات فعلی با این پشتیبان جایگزین می‌شود. یک نسخه پشتیبان از وضعیت فعلی به صورت خودکار ایجاد خواهد شد.
                                 </span>
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>انصراف</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleRestoreBackup(backup.filename)}
-                                className="bg-amber-600 hover:bg-amber-700"
-                              >
+                              <AlertDialogAction onClick={() => handleRestoreBackup(backup.filename)} className="bg-amber-600 hover:bg-amber-700">
                                 بله، بازیابی کن
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -884,29 +742,18 @@ export default function SettingsPage() {
                         </AlertDialog>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1 h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
+                            <Button variant="ghost" size="sm" className="gap-1 h-8 text-destructive hover:text-destructive hover:bg-destructive/10">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>حذف پشتیبان</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                آیا مطمئن هستید که می‌خواهید این فایل پشتیبان را حذف کنید؟ این عمل قابل بازگشت نیست.
-                              </AlertDialogDescription>
+                              <AlertDialogDescription>آیا مطمئن هستید که می‌خواهید این فایل پشتیبان را حذف کنید؟ این عمل قابل بازگشت نیست.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>انصراف</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteBackup(backup.filename)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                حذف
-                              </AlertDialogAction>
+                              <AlertDialogAction onClick={() => handleDeleteBackup(backup.filename)} className="bg-destructive hover:bg-destructive/90">حذف</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

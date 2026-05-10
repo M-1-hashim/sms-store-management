@@ -23,3 +23,31 @@ Stage Summary:
 - Invoice printing now uses store settings dynamically
 - Files modified: schema.prisma, store.ts, app-sidebar.tsx, page.tsx, print-invoice.ts
 - Files created: settings.tsx, api/settings/route.ts, api/backup/route.ts
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add Dark/Light mode toggle and Calculator
+
+Work Log:
+- Created `ThemeProvider` wrapper component (src/components/theme-provider.tsx) using next-themes
+- Updated layout.tsx to wrap app with ThemeProvider (attribute="class", defaultTheme="light", enableSystem)
+- Created ThemeToggle component (src/components/theme-toggle.tsx) with Sun/Moon icon button in top bar
+- Created AppCalculator component (src/components/calculator.tsx) as floating button with full calculator:
+  - Display with expression + result, backspace support
+  - Number pad (Persian digits ۰-۹), operators (+, -, ×, ÷), percent, toggle sign, decimal
+  - History of last 10 calculations (clickable to reuse result)
+  - Full keyboard support (0-9, operators, Enter, Backspace, Escape)
+  - RTL-compatible with Persian/English display
+- Added ThemeToggle to header bar in page.tsx
+- Added AppCalculator floating button to page.tsx
+- Added theme selection UI to Settings page (Display tab) with 3 options: Light/Dark/System
+- Used useSyncExternalStore for hydration-safe mounting (avoids react-hooks/set-state-in-effect lint error)
+- All lint checks pass (only pre-existing electron/main.js errors)
+
+Stage Summary:
+- Dark/Light mode fully functional with next-themes
+- Theme toggle in top bar (quick access) + Settings page (3 visual options)
+- Floating calculator with Persian digits, full keyboard support, and history
+- Files modified: layout.tsx, page.tsx, settings.tsx
+- Files created: theme-provider.tsx, theme-toggle.tsx, calculator.tsx

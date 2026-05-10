@@ -2,6 +2,8 @@
 
 import { useAppStore } from '@/lib/store'
 import { AppSidebar } from '@/components/app-sidebar'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { AppCalculator } from '@/components/calculator'
 import { cn } from '@/lib/utils'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -107,13 +109,16 @@ export default function HomePage() {
             <Menu className="w-4 h-4" />
           </Button>
           <div className="flex-1" />
-          <div className="text-xs text-muted-foreground hidden sm:block">
-            {new Date().toLocaleDateString('fa-AF', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <div className="text-xs text-muted-foreground hidden sm:block">
+              {new Date().toLocaleDateString('fa-AF', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </div>
           </div>
         </header>
 
@@ -122,6 +127,9 @@ export default function HomePage() {
           <PageContent />
         </div>
       </main>
+
+      {/* Floating Calculator */}
+      <AppCalculator />
     </div>
   )
 }
