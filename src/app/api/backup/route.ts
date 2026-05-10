@@ -5,24 +5,43 @@ import { writeFile, readFile } from 'fs/promises'
 import { db } from '@/lib/db'
 import { withAuth } from '@/lib/validate-auth'
 
-// Resolve actual DB path from DATABASE_URL
-function getDbPath(): string {
-  const dbUrl = process.env.DATABASE_URL || ''
-  // Handle file:./db/custom.db or file:/absolute/path/db/custom.db
-  const filePath = dbUrl.replace(/^file:/, '')
-  if (filePath.startsWith('/')) {
-    return filePath // absolute path
+// Resolve actual DB path by asking Prisma directly
+let _resolvedDbPath: string | null = null
+
+async function getDbPath(): Promise<string> {
+  if (_resolvedDbPath) return _resolvedDbPath
+
+  try {
+    const result = await db.$queryRaw<Array<{ file: string }>>`
+      SELECT file FROM pragma_database_list WHERE name='main'
+    `
+    if (result && result[0]?.file) {
+      _resolvedDbPath = result[0].file
+      return _resolvedDbPath
+    }
+  } catch {
+    // Fallback below
   }
-  // Relative path - resolve from project root
-  return join(process.cwd(), filePath)
+
+  // Fallback: resolve from DATABASE_URL
+  const dbUrl = process.env.DATABASE_URL || ''
+  const filePath = dbUrl.replace(/^file:/, '')
+  if (filePath.startsWith('/') || /^[A-Za-z]:/.test(filePath)) {
+    _resolvedDbPath = filePath
+  } else {
+    _resolvedDbPath = join(process.cwd(), filePath)
+  }
+  return _resolvedDbPath
 }
 
-const DB_PATH = getDbPath()
-const BACKUP_DIR = join(dirname(DB_PATH), 'backups')
+async function getBackupDir(): Promise<string> {
+  const dbPath = await getDbPath()
+  return join(dirname(dbPath), 'backups')
+}
 
-function ensureBackupDir() {
-  if (!existsSync(BACKUP_DIR)) {
-    mkdirSync(BACKUP_DIR, { recursive: true })
+function ensureDir(dir: string) {
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
   }
 }
 
@@ -42,12 +61,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action')
   const filename = searchParams.get('file')
+  const backupDir = await getBackupDir()
 
   // Download a specific backup
   if (action === 'download' && filename) {
     try {
-      const safePath = resolve(BACKUP_DIR, filename)
-      if (!safePath.startsWith(BACKUP_DIR)) {
+      const safePath = resolve(backupDir, filename)
+      if (!safePath.startsWith(backupDir)) {
         return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
       }
       if (!existsSync(safePath)) {
@@ -69,8 +89,8 @@ export async function GET(request: Request) {
   // Delete a backup
   if (action === 'delete' && filename) {
     try {
-      const safePath = resolve(BACKUP_DIR, filename)
-      if (!safePath.startsWith(BACKUP_DIR)) {
+      const safePath = resolve(backupDir, filename)
+      if (!safePath.startsWith(backupDir)) {
         return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
       }
       if (existsSync(safePath)) unlinkSync(safePath)
@@ -124,27 +144,26 @@ export async function GET(request: Request) {
       }
 
       // Create backup
-      ensureBackupDir()
-      const filename = generateBackupFilename('auto')
-      const backupPath = join(BACKUP_DIR, filename)
+      const dbPath = await getDbPath()
+      ensureDir(backupDir)
+      const backupFilename = generateBackupFilename('auto')
+      const backupPath = join(backupDir, backupFilename)
 
-      if (existsSync(DB_PATH)) {
-        cpSync(DB_PATH, backupPath)
+      if (existsSync(dbPath)) {
+        cpSync(dbPath, backupPath)
 
-        // Update lastAutoBackup timestamp
         await db.settings.update({
           where: { id: 'main' },
           data: { lastAutoBackup: now },
         })
 
-        // Clean old backups: keep only last N
         const keepCount = settings.backupKeepCount || 10
-        await cleanupOldBackups(keepCount)
+        await cleanupOldBackups(backupDir, keepCount)
 
         const stat = statSync(backupPath)
         return NextResponse.json({
           success: true,
-          data: { created: true, filename, size: (stat.size / 1024).toFixed(1) + ' KB' },
+          data: { created: true, filename: backupFilename, size: (stat.size / 1024).toFixed(1) + ' KB' },
         })
       }
 
@@ -157,11 +176,11 @@ export async function GET(request: Request) {
 
   // List all backups (default)
   try {
-    ensureBackupDir()
-    const files = readdirSync(BACKUP_DIR)
+    ensureDir(backupDir)
+    const files = readdirSync(backupDir)
       .filter((f) => f.endsWith('.db'))
       .map((f) => {
-        const stat = statSync(join(BACKUP_DIR, f))
+        const stat = statSync(join(backupDir, f))
         const isAuto = f.startsWith('auto-')
         return {
           filename: f,
@@ -184,6 +203,8 @@ export async function POST(request: Request) {
   const auth = await withAuth(request as any)
   if (!auth.valid) return auth.response
 
+  const dbPath = await getDbPath()
+  const backupDir = await getBackupDir()
   const contentType = request.headers.get('content-type') || ''
 
   // File upload (FormData) — restore from uploaded file
@@ -196,7 +217,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'فایلی انتخاب نشده' }, { status: 400 })
       }
 
-      // Validate file
       if (!file.name.endsWith('.db') && !file.name.endsWith('.sqlite') && !file.name.endsWith('.sqlite3')) {
         return NextResponse.json(
           { success: false, error: 'لطفاً فقط فایل دیتابیس (.db, .sqlite) انتخاب کنید' },
@@ -208,10 +228,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'حجم فایل نباید بیشتر از ۱۰۰ مگابایت باشد' }, { status: 400 })
       }
 
-      // Save uploaded file first
-      ensureBackupDir()
+      ensureDir(backupDir)
       const uploadFilename = generateBackupFilename('uploaded')
-      const uploadPath = join(BACKUP_DIR, uploadFilename)
+      const uploadPath = join(backupDir, uploadFilename)
       const bytes = await file.arrayBuffer()
       await writeFile(uploadPath, Buffer.from(bytes))
 
@@ -219,7 +238,6 @@ export async function POST(request: Request) {
       const uploadedBuffer = await readFile(uploadPath)
       const header = uploadedBuffer.slice(0, 16).toString('utf8')
       if (!header.startsWith('SQLite format 3')) {
-        // Delete invalid file
         unlinkSync(uploadPath)
         return NextResponse.json(
           { success: false, error: 'فایل انتخاب شده یک دیتابیس SQLite معتبر نیست' },
@@ -229,14 +247,13 @@ export async function POST(request: Request) {
 
       // Create pre-restore backup of current DB
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-      const preRestorePath = join(BACKUP_DIR, `pre-upload-${timestamp}.db`)
+      const preRestorePath = join(backupDir, `pre-upload-${timestamp}.db`)
 
-      if (existsSync(DB_PATH)) {
-        cpSync(DB_PATH, preRestorePath)
+      if (existsSync(dbPath)) {
+        cpSync(dbPath, preRestorePath)
       }
 
-      // Replace current DB with uploaded file
-      cpSync(uploadPath, DB_PATH)
+      cpSync(uploadPath, dbPath)
 
       return NextResponse.json({
         success: true,
@@ -253,15 +270,15 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { action } = body
 
-    ensureBackupDir()
+    ensureDir(backupDir)
 
     if (action === 'create') {
       const filename = generateBackupFilename('manual')
-      const backupPath = join(BACKUP_DIR, filename)
+      const backupPath = join(backupDir, filename)
 
       try {
-        if (existsSync(DB_PATH)) {
-          cpSync(DB_PATH, backupPath)
+        if (existsSync(dbPath)) {
+          cpSync(dbPath, backupPath)
           const stat = statSync(backupPath)
           return NextResponse.json({
             success: true,
@@ -283,8 +300,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'نام فایل مشخص نشده' }, { status: 400 })
       }
 
-      const restorePath = resolve(BACKUP_DIR, filename)
-      if (!restorePath.startsWith(BACKUP_DIR)) {
+      const restorePath = resolve(backupDir, filename)
+      if (!restorePath.startsWith(backupDir)) {
         return NextResponse.json({ success: false, error: 'نام فایل نامعتبر' }, { status: 403 })
       }
       if (!existsSync(restorePath)) {
@@ -292,11 +309,11 @@ export async function POST(request: Request) {
       }
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-      const preRestoreBackup = join(BACKUP_DIR, `pre-restore-${timestamp}.db`)
+      const preRestoreBackup = join(backupDir, `pre-restore-${timestamp}.db`)
 
       try {
-        if (existsSync(DB_PATH)) cpSync(DB_PATH, preRestoreBackup)
-        cpSync(restorePath, DB_PATH)
+        if (existsSync(dbPath)) cpSync(dbPath, preRestoreBackup)
+        cpSync(restorePath, dbPath)
 
         return NextResponse.json({ success: true, message: 'بازیابی با موفقیت انجام شد. لطفاً صفحه را رفرش کنید.' })
       } catch (restoreError) {
@@ -314,22 +331,21 @@ export async function POST(request: Request) {
 
 // --- Helpers ---
 
-async function cleanupOldBackups(keepCount: number) {
+async function cleanupOldBackups(backupDir: string, keepCount: number) {
   try {
-    ensureBackupDir()
-    const files = readdirSync(BACKUP_DIR)
+    ensureDir(backupDir)
+    const files = readdirSync(backupDir)
       .filter((f) => f.startsWith('auto-') && f.endsWith('.db'))
       .map((f) => ({
         filename: f,
-        mtime: statSync(join(BACKUP_DIR, f)).mtime.getTime(),
+        mtime: statSync(join(backupDir, f)).mtime.getTime(),
       }))
       .sort((a, b) => b.mtime - a.mtime)
 
-    // Delete oldest backups beyond keepCount
     const toDelete = files.slice(keepCount)
     for (const file of toDelete) {
       try {
-        unlinkSync(join(BACKUP_DIR, file.filename))
+        unlinkSync(join(backupDir, file.filename))
       } catch {
         // ignore individual delete errors
       }
