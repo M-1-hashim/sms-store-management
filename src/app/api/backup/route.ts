@@ -253,6 +253,9 @@ export async function POST(request: Request) {
         cpSync(dbPath, preRestorePath)
       }
 
+      // Disconnect Prisma before replacing DB file (Windows file lock)
+      await db.$disconnect()
+
       cpSync(uploadPath, dbPath)
 
       return NextResponse.json({
@@ -313,6 +316,10 @@ export async function POST(request: Request) {
 
       try {
         if (existsSync(dbPath)) cpSync(dbPath, preRestoreBackup)
+
+        // Disconnect Prisma before replacing DB file (Windows file lock)
+        await db.$disconnect()
+
         cpSync(restorePath, dbPath)
 
         return NextResponse.json({ success: true, message: 'بازیابی با موفقیت انجام شد. لطفاً صفحه را رفرش کنید.' })
